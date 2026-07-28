@@ -261,13 +261,12 @@ export function createApp(deps: ServerDependencies = {}): Express {
       }
       const forceBreach = Boolean(req.body?.forceBreach);
       const base = await observe(config);
-      const observation = forceBreach ? breachObservation(base, config) : undefined;
       const result = await runAgentCycle({
         trigger: "x402",
         config,
         store,
         keeperhub,
-        observation,
+        ...(forceBreach ? { observation: breachObservation(base, config) } : {}),
         amountWeiForAction: req.body?.amountWei,
       });
       res.json(result);
