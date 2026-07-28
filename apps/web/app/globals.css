@@ -1,7 +1,17 @@
 :root {
-  color: #101828;
-  background: #fff;
-  font-family: Arial, Helvetica, sans-serif;
+  --ink: #0e1412;
+  --ink-soft: #2a3833;
+  --mist: #e8efeb;
+  --paper: #f3f7f4;
+  --line: rgba(14, 20, 18, 0.12);
+  --signal: #0f8f78;
+  --signal-deep: #0a5c4d;
+  --warn: #b42318;
+  --muted: #5c6b64;
+  --glow: rgba(15, 143, 120, 0.18);
+  color: var(--ink);
+  background: var(--paper);
+  font-family: var(--font-mono), ui-monospace, monospace;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -9,10 +19,55 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 12% -10%, var(--glow), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(42, 56, 51, 0.08), transparent 50%),
+    linear-gradient(165deg, #f7faf8 0%, #e7eee9 48%, #f2f6f3 100%);
+  background-attachment: fixed;
 }
 
 a {
+  color: var(--signal-deep);
   text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(15, 143, 120, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(15, 143, 120, 0);
+  }
+}
+
+@keyframes sheen {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
 }

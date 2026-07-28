@@ -1,9 +1,23 @@
 import type { Metadata } from "next";
+import { Syne, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
+const syne = Syne({
+  subsets: ["latin"],
+  variable: "--font-display",
+  weight: ["500", "600", "700", "800"],
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  weight: ["400", "500", "600"],
+});
+
 export const metadata: Metadata = {
-  title: "KeeperHub dashboard",
-  description: "Minimal KeeperHub agent demo dashboard",
+  title: "KeeperHub · Agents Onchain",
+  description:
+    "Demo dashboard for an AI agent that observes, decides, and executes real onchain actions through KeeperHub.",
 };
 
 export default function RootLayout({
@@ -12,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${syne.variable} ${plexMono.variable}`}>
       <body>{children}</body>
     </html>
   );
