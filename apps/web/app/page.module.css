@@ -312,7 +312,8 @@
   display: inline-grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.4rem;
-  margin-bottom: 0.85rem;
+  width: 100%;
+  margin: 0.85rem 0 0;
 }
 
 .toggleOn,
@@ -337,8 +338,72 @@
   background: rgba(255, 255, 255, 0.4);
 }
 
+.x402Panel {
+  margin: 0.85rem 0 0;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(15, 143, 120, 0.35);
+  background: rgba(15, 143, 120, 0.06);
+}
+
+.x402Panel .sectionHead {
+  margin-bottom: 0.75rem;
+}
+
+.x402Panel h3 {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.x402Facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem 0.75rem;
+  margin: 0 0 0.85rem;
+}
+
+.x402Facts div {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.x402Facts dt {
+  margin: 0 0 0.2rem;
+  color: var(--muted);
+  font-size: 0.64rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.x402Facts dd {
+  margin: 0;
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+
+.challengeBlock {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+}
+
+.challenge {
+  margin: 0;
+  padding: 0.85rem;
+  overflow: auto;
+  max-height: 14rem;
+  border: 1px solid var(--line);
+  background: rgba(14, 20, 18, 0.92);
+  color: #9fe7c8;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
 .primaryCta {
   width: 100%;
+  margin-top: 0.85rem;
   border: 0;
   padding: 1rem 1.1rem;
   color: var(--ink);
@@ -531,7 +596,8 @@
   .metrics,
   .modeGrid,
   .stepRail,
-  .factGrid {
+  .factGrid,
+  .x402Facts {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -540,7 +606,8 @@
   .metrics,
   .modeGrid,
   .stepRail,
-  .factGrid {
+  .factGrid,
+  .x402Facts {
     grid-template-columns: 1fr;
   }
 

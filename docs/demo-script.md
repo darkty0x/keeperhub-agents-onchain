@@ -60,11 +60,13 @@ Show Decide → Execute quickly (skip long pauses).
 
 ### 1:15–1:35 — Paid API boundary
 
-Select **Paid API** → **Unpaid** → run → show payment required.
+Select **x402** → show the gate panel (endpoint, `x-payment`, price, payTo, challenge JSON).
 
-Switch to **Paid** → run → show the cycle completing.
+**Unpaid → 402** → run → show live HTTP 402 body.
 
-“x402-style gate before the same execution core.”
+**Paid header** → run → cycle completes with trigger `x402`.
+
+“x402 gate before the same execution core.”
 
 ### 1:35–1:50 — Observe (optional)
 

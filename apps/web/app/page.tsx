@@ -40,6 +40,30 @@ type AuditRecord = {
   };
 };
 
+type X402Gate = {
+  enabled?: boolean;
+  endpoint?: string;
+  paymentHeader?: string;
+  version?: number;
+  scheme?: string;
+  network?: string;
+  priceUsdc?: string;
+  payTo?: string;
+  resource?: string;
+  demoBypass?: boolean;
+  challenge?: {
+    x402Version: number;
+    accepts: Array<{
+      scheme: string;
+      network: string;
+      maxAmountRequired: string;
+      resource: string;
+      payTo: string;
+      description: string;
+    }>;
+  };
+};
+
 type AgentStatus = {
   execution?: {
     mock: boolean;
@@ -67,6 +91,7 @@ type AgentStatus = {
     preferTransferFirst?: boolean;
     llmEnabled: boolean;
   };
+  x402?: X402Gate;
   observation?: AuditRecord["observation"] & { at?: string; chainId?: string };
   lastSuccessAt?: string | null;
   lastRun?: AuditRecord | null;
@@ -79,7 +104,7 @@ type CycleStep = "observe" | "decide" | "policy" | "execute";
 const MODES: { id: ModeId; title: string; blurb: string }[] = [
   { id: "guardian", title: "Guardian", blurb: "Watch balance, act on breach" },
   { id: "event", title: "Event", blurb: "Ingest event, then act" },
-  { id: "x402", title: "Paid API", blurb: "Run after payment" },
+  { id: "x402", title: "x402", blurb: "HTTP 402 → same core" },
   { id: "observe", title: "Observe", blurb: "Read state only" },
 ];
 
@@ -190,7 +215,7 @@ export default function Home() {
   const [paymentChallenge, setPaymentChallenge] = useState<unknown>(null);
   const [mode, setMode] = useState<ModeId>("guardian");
   const [cycleStep, setCycleStep] = useState<CycleStep>("execute");
-  const [x402Paid, setX402Paid] = useState(true);
+  const [x402Paid, setX402Paid] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -265,6 +290,7 @@ export default function Home() {
   }
 
   const cfg = status?.config;
+  const x402 = status?.x402;
   const obs = lastResult?.observation ?? status?.observation;
   const mock = status?.execution?.mock;
   const liveTx =
@@ -272,6 +298,8 @@ export default function Home() {
     records.find((r) => r.txHash && !isMockTx(r.txHash))?.txHash ||
     (lastResult?.txHash && !isMockTx(lastResult.txHash) ? lastResult.txHash : null);
   const wallet = cfg?.walletAddress;
+  const challengePayload = paymentChallenge ?? x402?.challenge ?? null;
+  const payTo = x402?.payTo ?? cfg?.x402.payTo;
 
   const stepIndex = CYCLE_STEPS.findIndex((s) => s.id === cycleStep);
 
@@ -279,7 +307,7 @@ export default function Home() {
     if (busy) return "Running…";
     if (mode === "guardian") return "Run guardian";
     if (mode === "event") return "Ingest event";
-    if (mode === "x402") return x402Paid ? "Run paid" : "Call unpaid";
+    if (mode === "x402") return x402Paid ? "Run with x-payment" : "Call unpaid (expect 402)";
     return "Observe";
   }, [busy, mode, x402Paid]);
 
@@ -301,6 +329,7 @@ export default function Home() {
                 {mock ? "Mock" : "Live"}
               </span>
             )}
+            <span className={styles.pillOk}>x402</span>
             <span className={styles.pillMuted}>
               {(status?.execution?.chainId ?? "sepolia").toUpperCase()}
               {status?.execution?.networkId ? ` · ${status.execution.networkId}` : ""}
@@ -376,21 +405,74 @@ export default function Home() {
           </div>
 
           {mode === "x402" ? (
-            <div className={styles.payToggle} role="group" aria-label="Payment">
-              <button
-                type="button"
-                className={x402Paid ? styles.toggleOn : styles.toggleOff}
-                onClick={() => setX402Paid(true)}
-              >
-                Paid
-              </button>
-              <button
-                type="button"
-                className={!x402Paid ? styles.toggleOn : styles.toggleOff}
-                onClick={() => setX402Paid(false)}
-              >
-                Unpaid
-              </button>
+            <div className={styles.x402Panel} aria-label="x402 payment gate">
+              <div className={styles.sectionHead}>
+                <h3>x402 gate</h3>
+                <p>Unpaid → HTTP 402 challenge · Paid header → same agent core</p>
+              </div>
+              <dl className={styles.x402Facts}>
+                <div>
+                  <dt>Endpoint</dt>
+                  <dd className={styles.mono}>{x402?.endpoint ?? "POST /api/paid/run"}</dd>
+                </div>
+                <div>
+                  <dt>Header</dt>
+                  <dd className={styles.mono}>{x402?.paymentHeader ?? "x-payment"}</dd>
+                </div>
+                <div>
+                  <dt>Version</dt>
+                  <dd>x402 v{x402?.version ?? 1}</dd>
+                </div>
+                <div>
+                  <dt>Scheme</dt>
+                  <dd>{x402?.scheme ?? "exact"}</dd>
+                </div>
+                <div>
+                  <dt>Price</dt>
+                  <dd>{x402?.priceUsdc ?? cfg?.x402.priceUsdc ?? "—"} USDC</dd>
+                </div>
+                <div>
+                  <dt>Network</dt>
+                  <dd>{x402?.network ?? cfg?.chainId ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt>Resource</dt>
+                  <dd className={styles.mono}>{x402?.resource ?? "/api/paid/run"}</dd>
+                </div>
+                <div>
+                  <dt>Unlock</dt>
+                  <dd>{x402?.demoBypass ? "x-payment: demo" : "Verified payment required"}</dd>
+                </div>
+              </dl>
+              {payTo ? (
+                <HexLink label="payTo" value={payTo} href={explorerAddress(payTo)} />
+              ) : null}
+
+              <div className={styles.payToggle} role="group" aria-label="Payment">
+                <button
+                  type="button"
+                  className={!x402Paid ? styles.toggleOn : styles.toggleOff}
+                  onClick={() => setX402Paid(false)}
+                >
+                  Unpaid → 402
+                </button>
+                <button
+                  type="button"
+                  className={x402Paid ? styles.toggleOn : styles.toggleOff}
+                  onClick={() => setX402Paid(true)}
+                >
+                  Paid header
+                </button>
+              </div>
+
+              {challengePayload != null ? (
+                <div className={styles.challengeBlock}>
+                  <span className={styles.hexLabel}>
+                    {paymentChallenge ? "Live HTTP 402 body" : "Challenge shape"}
+                  </span>
+                  <pre className={styles.challenge}>{JSON.stringify(challengePayload, null, 2)}</pre>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -404,9 +486,6 @@ export default function Home() {
           </button>
 
           {error ? <p className={styles.error}>{error}</p> : null}
-          {paymentChallenge != null ? (
-            <p className={styles.muted}>HTTP 402 — payment challenge returned. Switch to Paid and run again.</p>
-          ) : null}
         </section>
 
         <section className={styles.cycle} aria-labelledby="cycle-heading">
