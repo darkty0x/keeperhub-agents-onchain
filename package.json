@@ -12,7 +12,8 @@
     "build": "tsc -p tsconfig.json",
     "cli": "tsx src/cli.ts",
     "server": "tsx src/server.ts",
-    "start": "tsx src/server.ts"
+    "start": "tsx src/server.ts",
+    "live-submit": "tsx scripts/live-submit.ts"
   },
   "engines": {
     "node": ">=22"

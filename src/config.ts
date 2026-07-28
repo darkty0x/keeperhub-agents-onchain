@@ -37,6 +37,7 @@ const AppConfigSchema = z.object({
     priceUsdc: z.string(),
     payTo: z.string(),
   }),
+  preferTransferFirst: z.boolean().optional(),
   llm: z
     .object({
       enabled: z.boolean(),
@@ -46,15 +47,50 @@ const AppConfigSchema = z.object({
     .optional(),
 });
 
+function applyEnvOverrides(config: AppConfig): AppConfig {
+  const next: AppConfig = {
+    ...config,
+    allowedActions: config.allowedActions.map((a) => ({ ...a })),
+    recipientAllowlist: [...config.recipientAllowlist],
+  };
+
+  const wallet = process.env.WALLET_ADDRESS?.trim();
+  if (wallet) next.walletAddress = wallet;
+
+  const recipient = process.env.RECIPIENT_ADDRESS?.trim();
+  if (recipient) {
+    next.recipientAllowlist = [recipient];
+    for (const action of next.allowedActions) {
+      if (action.kind === "transfer") action.recipient = recipient;
+    }
+  }
+
+  const rpc = process.env.RPC_URL?.trim();
+  if (rpc) next.rpcUrl = rpc;
+
+  if (process.env.PREFER_TRANSFER_FIRST === "1") {
+    next.preferTransferFirst = true;
+  }
+  if (process.env.PREFER_TRANSFER_FIRST === "0") {
+    next.preferTransferFirst = false;
+  }
+
+  const maxWei = process.env.MAX_AMOUNT_WEI?.trim();
+  if (maxWei) next.maxAmountWei = maxWei;
+
+  return next;
+}
+
 export function loadConfig(configPath = process.env.CONFIG_PATH ?? "config/default.json"): AppConfig {
   const raw = JSON.parse(fs.readFileSync(configPath, "utf8"));
   const parsed = AppConfigSchema.parse(raw) as AppConfig;
-  const hasTransfer = parsed.allowedActions.some((a) => a.kind === "transfer");
-  if (hasTransfer && parsed.recipientAllowlist.length === 0) {
+  const config = applyEnvOverrides(parsed);
+  const hasTransfer = config.allowedActions.some((a) => a.kind === "transfer");
+  if (hasTransfer && config.recipientAllowlist.length === 0) {
     throw new Error("recipientAllowlist must be non-empty when transfer actions exist");
   }
-  if (!parsed.chainAllowlist.includes(parsed.chainId)) {
-    throw new Error(`chainId ${parsed.chainId} not in chainAllowlist`);
+  if (!config.chainAllowlist.includes(config.chainId)) {
+    throw new Error(`chainId ${config.chainId} not in chainAllowlist`);
   }
-  return parsed;
+  return config;
 }

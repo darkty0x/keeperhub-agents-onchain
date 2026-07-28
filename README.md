@@ -125,8 +125,13 @@ Open `http://localhost:3000`.
 
 | Variable | Purpose |
 | --- | --- |
+| `REQUIRE_LIVE_KEEPERHUB` | Set `1` to refuse mock boot and placeholder addresses |
+| `WALLET_ADDRESS` | Override watched RPC address (must be real when live) |
+| `RECIPIENT_ADDRESS` | Override transfer allowlist + transfer action recipient |
+| `PREFER_TRANSFER_FIRST` | `1` prefers tiny transfer for first live proof |
+| `SUBMISSION_TX_HASH` | Persist a verified live hash across audit wipes |
 | `KEEPERHUB_API_KEY` | Default env name for the live KeeperHub key (`kh_...`); override via `keeperhubApiKeyEnv` in config |
-| `KEEPERHUB_MOCK` | Set to `1` to force the local mock |
+| `KEEPERHUB_MOCK` | Set to `1` for **local tests only** — never for submission |
 | `KEEPERHUB_MCP_URL` | Optional MCP endpoint override |
 | `CONFIG_PATH` | JSON config path; defaults to `config/default.json` |
 | `AUDIT_PATH` | JSONL audit path; defaults to `data/audit.jsonl` |

@@ -90,6 +90,8 @@ export interface AppConfig {
     priceUsdc: string;
     payTo: string;
   };
+  /** Prefer transfer over protocol_action for the first live Sepolia proof. */
+  preferTransferFirst?: boolean;
   llm?: {
     enabled: boolean;
     baseUrl: string;

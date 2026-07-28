@@ -57,6 +57,8 @@ type DemoStatus = {
     keeperhubMcp: string;
     chainId: string;
     networkId?: string;
+    signer?: string;
+    watchedAddressLabel?: string;
   };
   deploy?: {
     api?: string | null;
@@ -82,6 +84,7 @@ type DemoStatus = {
     events: { contractAddress: string; eventSignature: string };
     allowedActions: AllowedAction[];
     x402: { priceUsdc: string; payTo: string };
+    preferTransferFirst?: boolean;
     llmEnabled: boolean;
   };
   observation?: AuditRecord["observation"] & { at?: string; chainId?: string };
@@ -92,6 +95,7 @@ type DemoStatus = {
     ready?: boolean;
     mockBlocksSubmission?: boolean;
     liveTxReady: boolean;
+    liveTxHash?: string | null;
     demoVideoReady: boolean;
     checklist: { id: string; label: string; done: boolean }[];
   };
@@ -116,9 +120,20 @@ function shortAddr(address?: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-function isMockTx(txHash?: string, mockMode?: boolean) {
+function isMockTx(txHash?: string) {
   if (!txHash) return false;
-  return /mock/i.test(txHash) || mockMode === true;
+  return /mock/i.test(txHash);
+}
+
+function txLabel(record: Pick<AuditRecord, "outcome" | "txHash" | "error" | "decision">) {
+  if (record.outcome === "noop") {
+    return "noop — no tx (healthy metrics)";
+  }
+  if (record.txHash) {
+    return isMockTx(record.txHash) ? "mock tx (not explorers)" : shortAddr(record.txHash);
+  }
+  if (record.outcome === "blocked") return "blocked — no tx";
+  return record.error ?? "no tx";
 }
 
 export default function Home() {
@@ -248,6 +263,35 @@ export default function Home() {
               </dd>
             </div>
             <div>
+              <dt>Submission tx</dt>
+              <dd>
+                {status?.submission?.liveTxHash ? (
+                  <a
+                    href={`https://sepolia.etherscan.io/tx/${status.submission.liveTxHash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {shortAddr(status.submission.liveTxHash)}
+                  </a>
+                ) : (
+                  "None yet"
+                )}
+              </dd>
+            </div>
+          </dl>
+          <dl className={styles.execMeta}>
+            <div>
+              <dt>Watched address (RPC)</dt>
+              <dd>{shortAddr(cfg?.walletAddress)}</dd>
+            </div>
+            <div>
+              <dt>Execution signer</dt>
+              <dd>
+                {status?.execution?.signer ??
+                  "KeeperHub org Turnkey wallet (not MetaMask in this UI)"}
+              </dd>
+            </div>
+            <div>
               <dt>Last success</dt>
               <dd>{formatDate(status?.lastSuccessAt)}</dd>
             </div>
@@ -305,10 +349,12 @@ export default function Home() {
             <strong>{lastResult?.outcome ?? "idle"}</strong>
             <p>
               {lastResult?.txHash
-                ? isMockTx(lastResult.txHash, mock)
+                ? isMockTx(lastResult.txHash)
                   ? "Mock hash (not explorers)"
                   : shortAddr(lastResult.txHash)
-                : "No tx yet — run a mode below."}
+                : lastResult?.outcome === "noop"
+                  ? "noop — healthy metrics, no KeeperHub call"
+                  : "No tx yet — run guardian breach below."}
             </p>
           </article>
         </section>
@@ -316,22 +362,26 @@ export default function Home() {
         <section className={styles.modes} aria-labelledby="modes-heading">
           <div className={styles.sectionHead}>
             <h2 id="modes-heading">Three modes · same core</h2>
-            <p>Each button triggers a real agent cycle through the shared pipeline.</p>
+            <p>
+              Primary path: Guardian breach (tiny transfer when live). Manual observe often noops
+              when the watched address is healthy — that is expected, not a wallet bug.
+            </p>
           </div>
           <div className={styles.modeGrid}>
             <article className={styles.modeCard}>
               <p className={styles.modePersona}>Solo DeFi user</p>
               <h3>Guardian</h3>
               <p>
-                Watches wallet metric every {cfg?.guardian.intervalSeconds ?? 30}s conceptually.
-                Demo run injects a threshold breach so you see a non-noop decision.
+                Watches the RPC address every {cfg?.guardian.intervalSeconds ?? 30}s. Demo run
+                injects a threshold breach so policy can allow a write through KeeperHub.
               </p>
               <ul>
                 <li>
                   Metric: {cfg?.guardian.metricName} {cfg?.guardian.thresholdDirection}{" "}
                   {cfg?.guardian.threshold}
                 </li>
-                <li>Wallet: {shortAddr(cfg?.walletAddress)}</li>
+                <li>Watched address: {shortAddr(cfg?.walletAddress)}</li>
+                <li>Signer: KeeperHub org wallet</li>
               </ul>
               <button
                 type="button"
@@ -407,9 +457,12 @@ export default function Home() {
               disabled={Boolean(busy)}
               onClick={() => void run("manual", () => runManual(false))}
             >
-              {busy === "manual" ? "Running…" : "Manual observe (no force breach)"}
+              {busy === "manual" ? "Running…" : "Manual observe (often noop)"}
             </button>
-            <p>Uses live RPC observation — often noop when wallet is healthy.</p>
+            <p>
+              Live RPC only — if metrics are within threshold the decision is noop and there is no
+              transaction. Use Guardian breach to force an allowlisted write.
+            </p>
           </div>
           {error && <p className={styles.error}>{error}</p>}
           {paymentChallenge != null && (
@@ -455,7 +508,11 @@ export default function Home() {
         <section className={styles.actions} aria-labelledby="actions-heading">
           <div className={styles.sectionHead}>
             <h2 id="actions-heading">Allowlisted actions</h2>
-            <p>Hero prefers protocol_action; transfer is the fallback; noop when healthy.</p>
+            <p>
+              {cfg?.preferTransferFirst
+                ? "First live proof prefers tiny transfer; protocol_action is secondary; noop when healthy."
+                : "Hero prefers protocol_action; transfer is the fallback; noop when healthy."}
+            </p>
           </div>
           <ul className={styles.actionList}>
             {(cfg?.allowedActions ?? []).map((action) => (
@@ -516,7 +573,7 @@ export default function Home() {
         <section className={styles.audit} aria-labelledby="audit-heading">
           <div className={styles.sectionHead}>
             <h2 id="audit-heading">Execution audit</h2>
-            <p>Full records: trigger → observation → decision → policy → tx</p>
+            <p>Every run: trigger → decision → policy → KeeperHub outcome</p>
           </div>
           {records.length === 0 ? (
             <p className={styles.muted}>{loading ? "Loading…" : "No runs yet."}</p>
@@ -524,6 +581,7 @@ export default function Home() {
             <ul className={styles.list}>
               {records.map((record) => {
                 const open = expanded === record.id;
+                const live = Boolean(record.txHash && !isMockTx(record.txHash));
                 return (
                   <li key={record.id}>
                     <button
@@ -537,21 +595,18 @@ export default function Home() {
                           {" "}
                           · {record.trigger}
                           {record.decision?.actionId ? ` · ${record.decision.actionId}` : ""}
+                          {record.decision?.rationale
+                            ? ` — ${record.decision.rationale.slice(0, 72)}${record.decision.rationale.length > 72 ? "…" : ""}`
+                            : ""}
                         </span>
                       </span>
                       <span className={styles.when}>{formatDate(record.at)}</span>
-                      <span className={styles.tx}>
-                        {record.txHash
-                          ? isMockTx(record.txHash, mock)
-                            ? "mock tx"
-                            : shortAddr(record.txHash)
-                          : record.error ?? "no tx"}
-                      </span>
+                      <span className={live ? styles.txLive : styles.tx}>{txLabel(record)}</span>
                     </button>
                     {open && (
                       <div className={styles.auditDetail}>
                         <pre>{JSON.stringify(record, null, 2)}</pre>
-                        {record.txHash && !isMockTx(record.txHash, mock) && (
+                        {live && (
                           <a
                             href={`https://sepolia.etherscan.io/tx/${record.txHash}`}
                             target="_blank"

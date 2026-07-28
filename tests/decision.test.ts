@@ -21,10 +21,10 @@ function obs(over: Partial<Observation> = {}): Observation {
 }
 
 describe("decide", () => {
-  it("picks a non-noop action when threshold breached (rules)", async () => {
+  it("picks transfer-topup first when preferTransferFirst and breached", async () => {
     const decision = await decide(obs(), cfg(), { llm: null });
     expect(decision.fromRules).toBe(true);
-    expect(decision.actionId).not.toBe("noop");
+    expect(decision.actionId).toBe("transfer-topup");
   });
 
   it("picks noop when healthy", async () => {

@@ -48,9 +48,12 @@ export async function decide(
     }
   }
 
-  // Prefer protocol_action, else first candidate
-  const preferred =
-    candidates.find((c) => c.kind === "protocol_action") ?? candidates[0];
+  // Prefer transfer for first live Sepolia proof when configured; else protocol_action.
+  const preferred = config.preferTransferFirst
+    ? (candidates.find((c) => c.kind === "transfer") ??
+      candidates.find((c) => c.kind === "protocol_action") ??
+      candidates[0])
+    : (candidates.find((c) => c.kind === "protocol_action") ?? candidates[0]);
   if (!preferred) {
     throw new Error("no allowed actions available");
   }

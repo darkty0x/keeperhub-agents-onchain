@@ -12,6 +12,15 @@ import { MockKeeperHubClient } from "./keeperhub/mock.js";
 import { startGuardian } from "./modes/guardian.js";
 import { handleChainEvent } from "./modes/events.js";
 import { buildPaymentRequired, hasValidPayment } from "./modes/x402.js";
+import {
+  assertLiveAddresses,
+  assertLiveExecutionAllowed,
+  findLiveTxHash,
+  isMockExecution,
+  LiveKeeperHubRequiredError,
+  rejectMockWritesEnabled,
+  requireLiveKeeperHubEnabled,
+} from "./live-gate.js";
 import type { KeeperHubClient } from "./keeperhub/types.js";
 import type { AppConfig, Observation } from "./types.js";
 
@@ -19,10 +28,8 @@ export interface ServerDependencies {
   config?: AppConfig;
   store?: AuditStore;
   keeperhub?: KeeperHubClient;
-}
-
-function isMockExecution(apiKey: string | undefined): boolean {
-  return !(apiKey && process.env.KEEPERHUB_MOCK !== "1");
+  /** When true, skip live-gate asserts (unit tests only). */
+  skipLiveGate?: boolean;
 }
 
 function createDependencies(deps: ServerDependencies) {
@@ -30,7 +37,17 @@ function createDependencies(deps: ServerDependencies) {
   const store = deps.store ?? new AuditStore(process.env.AUDIT_PATH ?? "data/audit.jsonl");
   const apiKeyEnv = config.keeperhubApiKeyEnv;
   const apiKey = process.env[apiKeyEnv];
+
+  if (!deps.skipLiveGate) {
+    assertLiveExecutionAllowed(apiKey);
+    assertLiveAddresses(config);
+  }
+
   const mock = isMockExecution(apiKey);
+  if (requireLiveKeeperHubEnabled() && mock && !deps.skipLiveGate) {
+    throw new LiveKeeperHubRequiredError("Live mode cannot use MockKeeperHubClient");
+  }
+
   const keeperhub =
     deps.keeperhub ??
     (mock ? new MockKeeperHubClient() : createKeeperHubClientFromEnv(apiKeyEnv));
@@ -77,6 +94,7 @@ function publicConfig(config: AppConfig) {
     events: config.events,
     allowedActions: config.allowedActions,
     x402: config.x402,
+    preferTransferFirst: Boolean(config.preferTransferFirst),
     llmEnabled: Boolean(config.llm?.enabled),
   };
 }
@@ -95,9 +113,21 @@ function breachObservation(base: Observation, config: AppConfig): Observation {
 }
 
 function hasLiveTx(store: AuditStore): boolean {
-  return store.list(200).some(
-    (r) => r.outcome === "success" && Boolean(r.txHash) && !/mock/i.test(r.txHash ?? ""),
-  );
+  return Boolean(findLiveTxHash(store.list(200)));
+}
+
+function rejectMockWrites(mock: boolean): express.RequestHandler {
+  return (_req, res, next) => {
+    if (rejectMockWritesEnabled() && mock) {
+      res.status(503).json({
+        error:
+          "Write endpoints disabled while mock is on. Set KEEPERHUB_API_KEY, delete KEEPERHUB_MOCK, set real WALLET_ADDRESS/RECIPIENT_ADDRESS, then REQUIRE_LIVE_KEEPERHUB=1.",
+        submissionReady: false,
+      });
+      return;
+    }
+    next();
+  };
 }
 
 export function createApp(deps: ServerDependencies = {}): Express {
@@ -106,8 +136,16 @@ export function createApp(deps: ServerDependencies = {}): Express {
   app.use(corsMiddleware);
   app.use(express.json());
 
+  const liveTxHash = () => findLiveTxHash(store.list(200));
+
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, killSwitch: config.killSwitch, mock });
+    res.json({
+      ok: true,
+      killSwitch: config.killSwitch,
+      mock,
+      requireLive: requireLiveKeeperHubEnabled(),
+      submissionReady: !mock && hasLiveTx(store),
+    });
   });
 
   app.get("/api/status", async (_req, res, next) => {
@@ -115,6 +153,7 @@ export function createApp(deps: ServerDependencies = {}): Express {
       const observation = await observe(config);
       const recent = store.list(8);
       const lastRun = recent[0] ?? null;
+      const liveHash = liveTxHash();
       res.json({
         product: {
           name: "KeeperHub Agents Onchain",
@@ -150,6 +189,8 @@ export function createApp(deps: ServerDependencies = {}): Express {
           keeperhubMcp: process.env.KEEPERHUB_MCP_URL ?? "https://app.keeperhub.com/mcp",
           chainId: config.chainId,
           networkId: networkIdForChain(config.chainId),
+          signer: "KeeperHub org Turnkey wallet (not MetaMask in this UI)",
+          watchedAddressLabel: "Watched address (RPC observe target)",
         },
         deploy: {
           api: process.env.PUBLIC_API_URL ?? null,
@@ -169,26 +210,27 @@ export function createApp(deps: ServerDependencies = {}): Express {
                 "NOT SUBMISSION-READY: mock mode cannot be judged — DoraHacks requires a real KeeperHub tx",
                 "Create a KeeperHub org API key (kh_…) at app.keeperhub.com → Settings → API Keys",
                 "Configure + fund a Sepolia wallet integration in KeeperHub (this signs txs — not MetaMask in the UI)",
-                "Set KEEPERHUB_API_KEY on Railway api and DELETE KEEPERHUB_MOCK",
-                "Run mcp-probe, then Guardian breach, verify hash on Sepolia Etherscan, paste into README",
+                "Set WALLET_ADDRESS + RECIPIENT_ADDRESS (real addresses), KEEPERHUB_API_KEY, DELETE KEEPERHUB_MOCK",
+                "Set REQUIRE_LIVE_KEEPERHUB=1, run mcp-probe, Guardian breach, verify on Sepolia Etherscan",
               ]
-            : hasLiveTx(store)
+            : liveHash
               ? [
-                  "Live KeeperHub tx recorded in audit — paste hash into README",
+                  `Live KeeperHub tx recorded: ${liveHash}`,
                   "Record the ~2 minute demo video with the explorer link visible",
                   "Publish GitHub + submit BUIDL on DoraHacks",
                 ]
               : [
-                  "Live key is configured — run Guardian breach and wait for a real txHash",
-                  "Verify on Sepolia Etherscan, then paste into README",
+                  "Live key is configured — run Guardian breach (prefers tiny transfer) and wait for txHash",
+                  "Verify on Sepolia Etherscan, then set SUBMISSION_TX_HASH / paste into README",
                   "Record demo video (docs/demo-script.md)",
                 ],
         },
         submission: {
-          ready: !mock && hasLiveTx(store),
+          ready: !mock && Boolean(liveHash),
           mockBlocksSubmission: mock,
           githubReady: true,
-          liveTxReady: hasLiveTx(store),
+          liveTxReady: Boolean(liveHash),
+          liveTxHash: liveHash,
           demoVideoReady: false,
           checklist: [
             {
@@ -202,7 +244,7 @@ export function createApp(deps: ServerDependencies = {}): Express {
             {
               id: "live-tx",
               label: "Real Sepolia tx hash via KeeperHub",
-              done: hasLiveTx(store),
+              done: Boolean(liveHash),
             },
             { id: "video", label: "Demo video recorded", done: false },
           ],
@@ -226,7 +268,9 @@ export function createApp(deps: ServerDependencies = {}): Express {
     }
   });
 
-  app.post("/api/run", async (req, res, next) => {
+  const blockMock = rejectMockWrites(mock);
+
+  app.post("/api/run", blockMock, async (req, res, next) => {
     try {
       const forceBreach = Boolean(req.body?.forceBreach);
       const base = await observe(config);
@@ -245,7 +289,7 @@ export function createApp(deps: ServerDependencies = {}): Express {
     }
   });
 
-  app.post("/api/guardian/run", async (req, res, next) => {
+  app.post("/api/guardian/run", blockMock, async (req, res, next) => {
     try {
       const forceBreach = req.body?.forceBreach !== false;
       const base = await observe(config);
@@ -264,7 +308,7 @@ export function createApp(deps: ServerDependencies = {}): Express {
     }
   });
 
-  app.post("/api/events/ingest", async (req, res, next) => {
+  app.post("/api/events/ingest", blockMock, async (req, res, next) => {
     try {
       const result = await handleChainEvent({
         config,
@@ -286,7 +330,7 @@ export function createApp(deps: ServerDependencies = {}): Express {
     }
   });
 
-  app.post("/api/paid/run", async (req, res, next) => {
+  app.post("/api/paid/run", blockMock, async (req, res, next) => {
     try {
       const headers = Object.fromEntries(
         Object.entries(req.headers).map(([key, value]) => [key.toLowerCase(), value]),
@@ -312,6 +356,10 @@ export function createApp(deps: ServerDependencies = {}): Express {
   });
 
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    if (err instanceof LiveKeeperHubRequiredError) {
+      res.status(err.statusCode).json({ error: err.message, submissionReady: false });
+      return;
+    }
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: message });
   });
@@ -320,12 +368,23 @@ export function createApp(deps: ServerDependencies = {}): Express {
 }
 
 export function startServer(port = Number(process.env.PORT ?? 8787), deps: ServerDependencies = {}): Server {
-  const resolved = createDependencies(deps);
-  const app = createApp(resolved);
-  const { config, store, keeperhub } = resolved;
+  let resolved: ReturnType<typeof createDependencies>;
+  try {
+    resolved = createDependencies(deps);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  }
+  const { config, store, keeperhub, mock } = resolved;
+  const app = createApp({
+    config,
+    store,
+    keeperhub,
+    skipLiveGate: true,
+  });
   let guardian: ReturnType<typeof startGuardian> | undefined;
   const server = app.listen(port, () => {
-    console.log(`API on http://localhost:${port}`);
+    console.log(`API on http://localhost:${port} mock=${mock} requireLive=${requireLiveKeeperHubEnabled()}`);
     if (process.env.GUARDIAN_AUTOSTART === "1") {
       guardian = startGuardian({
         intervalSeconds: config.guardian.intervalSeconds,
