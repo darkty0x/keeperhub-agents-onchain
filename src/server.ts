@@ -190,6 +190,8 @@ export function createApp(deps: ServerDependencies = {}): Express {
       mock,
       requireLive: requireLiveKeeperHubEnabled(),
       submissionReady: !mock && hasLiveTx(store),
+      auditRecords: listAuditRecords(store, config, 5).length,
+      build: "history-seed-v1",
     });
   });
 
