@@ -1,5 +1,40 @@
 import type { ExecuteRequest, ExecuteHandle, ExecutionStatus, KeeperHubClient } from "./types.js";
 
+type McpContentBlock = { type?: string; text?: string };
+
+function unwrapMcpToolResult(result: unknown): unknown {
+  if (result === null || typeof result !== "object") {
+    return result;
+  }
+
+  const envelope = result as {
+    isError?: boolean;
+    content?: McpContentBlock[];
+    executionId?: string;
+    id?: string;
+  };
+
+  if (envelope.isError) {
+    const detail = envelope.content?.[0]?.text ?? "KeeperHub MCP tool returned an error";
+    throw new Error(detail);
+  }
+
+  const text = envelope.content?.[0]?.text;
+  if (typeof text === "string" && text.length > 0) {
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      // not JSON; fall through
+    }
+  }
+
+  if ("executionId" in envelope || "id" in envelope) {
+    return result;
+  }
+
+  return result;
+}
+
 export class HttpKeeperHubClient implements KeeperHubClient {
   constructor(
     private readonly apiKey: string,
@@ -26,7 +61,7 @@ export class HttpKeeperHubClient implements KeeperHubClient {
     }
     const body = (await res.json()) as { result?: unknown; error?: { message: string } };
     if (body.error) throw new Error(body.error.message);
-    return body.result;
+    return unwrapMcpToolResult(body.result);
   }
 
   async execute(req: ExecuteRequest): Promise<ExecuteHandle> {
