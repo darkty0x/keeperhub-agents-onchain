@@ -1,0 +1,51 @@
+{
+  "chainId": "sepolia",
+  "walletAddress": "0x0000000000000000000000000000000000000001",
+  "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com",
+  "keeperhubApiKeyEnv": "KEEPERHUB_API_KEY",
+  "killSwitch": false,
+  "maxAmountWei": "100000000000000000",
+  "recipientAllowlist": [],
+  "chainAllowlist": ["sepolia"],
+  "cooldownSeconds": 60,
+  "guardian": {
+    "intervalSeconds": 30,
+    "metricName": "nativeBalanceEth",
+    "threshold": 0.01,
+    "thresholdDirection": "below"
+  },
+  "events": {
+    "contractAddress": "0x0000000000000000000000000000000000000003",
+    "eventSignature": "Transfer(address,address,uint256)"
+  },
+  "allowedActions": [
+    {
+      "id": "aave-withdraw-buffer",
+      "kind": "protocol_action",
+      "protocolActionType": "aave-v3/withdraw",
+      "description": "Withdraw buffer asset from Aave to top up wallet",
+      "maxAmountWei": "50000000000000000"
+    },
+    {
+      "id": "transfer-topup",
+      "kind": "transfer",
+      "description": "Transfer native ETH top-up to allowlisted recipient",
+      "maxAmountWei": "10000000000000000",
+      "recipient": "0x0000000000000000000000000000000000000002"
+    },
+    {
+      "id": "noop",
+      "kind": "noop",
+      "description": "Do nothing"
+    }
+  ],
+  "x402": {
+    "priceUsdc": "0.01",
+    "payTo": "0x0000000000000000000000000000000000000004"
+  },
+  "llm": {
+    "enabled": false,
+    "baseUrl": "https://api.openai.com/v1",
+    "model": "gpt-4o-mini"
+  }
+}
