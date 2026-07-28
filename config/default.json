@@ -42,7 +42,7 @@
   ],
   "x402": {
     "priceUsdc": "0.01",
-    "payTo": "0xFFaccF66c56C9236B84dbF02BB8CBa76734b702d"
+    "payTo": "0x09d9d6df8e0d2b0fd5a8fb153f246372424eba6f"
   },
   "llm": {
     "enabled": false,

@@ -78,6 +78,9 @@ function applyEnvOverrides(config: AppConfig): AppConfig {
   const maxWei = process.env.MAX_AMOUNT_WEI?.trim();
   if (maxWei) next.maxAmountWei = maxWei;
 
+  const payTo = process.env.X402_PAY_TO?.trim();
+  if (payTo) next.x402 = { ...next.x402, payTo };
+
   return next;
 }
 
