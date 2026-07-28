@@ -25,9 +25,10 @@ hash contains `MOCK`.
 - **Web:** https://web-production-a79e1.up.railway.app
 - Project: https://railway.com/project/3e08936e-8114-47f7-8a6d-4df8dd19c4bb
 
-Currently running with `KEEPERHUB_MOCK=1` until a live `kh_` key is configured.
-Full go-live steps: [`docs/go-live.md`](docs/go-live.md). Demo narration:
-[`docs/demo-script.md`](docs/demo-script.md).
+**Mock is NOT submission-ready.** DoraHacks requires a real KeeperHub transaction.
+The Railway deploy is still on `KEEPERHUB_MOCK=1` until a live `kh_` key is set —
+do not submit the BUIDL in that state. Go-live: [`docs/go-live.md`](docs/go-live.md).
+Demo narration: [`docs/demo-script.md`](docs/demo-script.md).
 
 ## Architecture
 

@@ -89,6 +89,8 @@ type DemoStatus = {
   lastRun?: AuditRecord | null;
   goLive?: { blockedOn: string[] };
   submission?: {
+    ready?: boolean;
+    mockBlocksSubmission?: boolean;
     liveTxReady: boolean;
     demoVideoReady: boolean;
     checklist: { id: string; label: string; done: boolean }[];
@@ -185,11 +187,21 @@ export default function Home() {
         <section className={styles.hero}>
           <h1>{status?.product?.tagline ?? "AI agents that finish the last mile onchain."}</h1>
           <p className={styles.lede}>
-            This is the full demo product for the KeeperHub Agents Onchain hackathon: one execution
-            core with three triggers (guardian, event responder, paid x402 API). Observe → decide →
-            policy → KeeperHub MCP → audit. Judges need a working tx through KeeperHub — mock mode
-            is for wiring; live mode is for submission.
+            One execution core, three triggers (guardian, event, paid x402). Observe → decide →
+            policy → KeeperHub MCP → audit. DoraHacks judges require a <strong>real</strong> Sepolia
+            transaction through KeeperHub — mock hashes are rejected for submission.
           </p>
+          {mock && (
+            <p className={styles.notReady} role="status">
+              NOT READY FOR SUBMISSION — running MOCK KeeperHub. Set a real <code>kh_</code> API key
+              and disable mock before recording the demo or filing the BUIDL.
+            </p>
+          )}
+          {!mock && status?.submission?.ready && (
+            <p className={styles.readyBanner} role="status">
+              Live KeeperHub tx recorded — still need demo video + public GitHub for full submission.
+            </p>
+          )}
           <div className={styles.heroLinks}>
             <a href={status?.product?.hackathon ?? "https://dorahacks.io/hackathon/agents-onchain"} target="_blank" rel="noreferrer">
               Hackathon brief
@@ -207,7 +219,11 @@ export default function Home() {
           <div className={styles.sectionHead}>
             <h2 id="checklist-heading">Submission readiness</h2>
             <p className={mock ? styles.badgeMock : styles.badgeLive}>
-              {mock ? "MOCK execution" : "LIVE KeeperHub"}
+              {mock
+                ? "NOT SUBMISSION READY"
+                : status?.submission?.ready
+                  ? "LIVE + TX RECORDED"
+                  : "LIVE — awaiting first tx"}
             </p>
           </div>
           <ul className={styles.checkList}>
@@ -249,7 +265,11 @@ export default function Home() {
         <section className={styles.golive} aria-labelledby="golive-heading">
           <div className={styles.sectionHead}>
             <h2 id="golive-heading">Go live for judging</h2>
-            <p>Mock proves the pipeline; judges need a real KeeperHub Sepolia tx + video.</p>
+            <p>
+              {mock
+                ? "Mock is local wiring only. Do not submit until this badge is LIVE and a real tx exists."
+                : "Live MCP is on — run a mode, open the explorer link, then record the video."}
+            </p>
           </div>
           <ol className={styles.goList}>
             {(status?.goLive?.blockedOn ?? [

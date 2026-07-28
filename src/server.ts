@@ -166,30 +166,42 @@ export function createApp(deps: ServerDependencies = {}): Express {
         goLive: {
           blockedOn: mock
             ? [
+                "NOT SUBMISSION-READY: mock mode cannot be judged — DoraHacks requires a real KeeperHub tx",
                 "Create a KeeperHub org API key (kh_…) at app.keeperhub.com → Settings → API Keys",
-                "Configure a funded Sepolia wallet integration in KeeperHub",
-                "Set KEEPERHUB_API_KEY and unset KEEPERHUB_MOCK on the API service",
-                "Run: npm run cli -- mcp-probe  (align tool args if schemas differ)",
-                "Run: npm run cli -- run  (or dashboard Guardian breach) and record the real tx hash",
+                "Configure + fund a Sepolia wallet integration in KeeperHub (this signs txs — not MetaMask in the UI)",
+                "Set KEEPERHUB_API_KEY on Railway api and DELETE KEEPERHUB_MOCK",
+                "Run mcp-probe, then Guardian breach, verify hash on Sepolia Etherscan, paste into README",
               ]
-            : [
-                "Live key is configured — run a mode and verify the hash on Sepolia Etherscan",
-                "Paste the tx hash into README submission checklist",
-                "Record the ~2 minute demo video (docs/demo-script.md)",
-              ],
+            : hasLiveTx(store)
+              ? [
+                  "Live KeeperHub tx recorded in audit — paste hash into README",
+                  "Record the ~2 minute demo video with the explorer link visible",
+                  "Publish GitHub + submit BUIDL on DoraHacks",
+                ]
+              : [
+                  "Live key is configured — run Guardian breach and wait for a real txHash",
+                  "Verify on Sepolia Etherscan, then paste into README",
+                  "Record demo video (docs/demo-script.md)",
+                ],
         },
         submission: {
+          ready: !mock && hasLiveTx(store),
+          mockBlocksSubmission: mock,
           githubReady: true,
           liveTxReady: hasLiveTx(store),
           demoVideoReady: false,
           checklist: [
-            { id: "keeperhub", label: "KeeperHub execution layer", done: true },
+            {
+              id: "keeperhub-live",
+              label: "Live KeeperHub MCP (not mock)",
+              done: !mock,
+            },
             { id: "modes", label: "Guardian + event + x402 modes", done: true },
             { id: "audit", label: "Audit trail + policy gate", done: true },
             { id: "ui", label: "Demo dashboard with all modes", done: true },
             {
               id: "live-tx",
-              label: "Real Sepolia tx via KeeperHub (not mock)",
+              label: "Real Sepolia tx hash via KeeperHub",
               done: hasLiveTx(store),
             },
             { id: "video", label: "Demo video recorded", done: false },

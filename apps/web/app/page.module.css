@@ -83,6 +83,28 @@
   line-height: 1.55;
 }
 
+.notReady,
+.readyBanner {
+  margin: 0;
+  max-width: 48rem;
+  padding: 0.85rem 1rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  border: 1px solid rgba(180, 35, 24, 0.4);
+  background: rgba(180, 35, 24, 0.1);
+  color: #8a1f16;
+}
+
+.readyBanner {
+  border-color: rgba(15, 143, 120, 0.4);
+  background: rgba(15, 143, 120, 0.12);
+  color: var(--signal-deep);
+}
+
+.notReady code {
+  font-size: 0.85em;
+}
+
 .heroLinks {
   display: flex;
   flex-wrap: wrap;
