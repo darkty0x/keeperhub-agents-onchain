@@ -2,6 +2,15 @@ import type { ExecuteRequest, ExecuteHandle, ExecutionStatus, KeeperHubClient } 
 
 type McpContentBlock = { type?: string; text?: string };
 
+// KeeperHub exposes these names through its remote MCP server. Keep the
+// application-facing KeeperHubClient stable while live tool schemas evolve.
+const TOOL_NAMES = {
+  transfer: "execute_transfer",
+  protocolAction: "execute_protocol_action",
+  checkAndExecute: "execute_check_and_execute",
+  status: "get_direct_execution_status",
+} as const;
+
 function unwrapMcpToolResult(result: unknown): unknown {
   if (result === null || typeof result !== "object") {
     return result;
@@ -38,9 +47,18 @@ function unwrapMcpToolResult(result: unknown): unknown {
 export class HttpKeeperHubClient implements KeeperHubClient {
   constructor(
     private readonly apiKey: string,
-    private readonly baseUrl = "https://app.keeperhub.com/mcp",
+    private readonly baseUrl = process.env.KEEPERHUB_MCP_URL ?? "https://app.keeperhub.com/mcp",
   ) {}
 
+  /**
+   * Sends one JSON-RPC MCP tools/call request.
+   *
+   * Before the first live run, compare the arguments below with the
+   * authenticated server's `tools/list` (or `tools_documentation`) response.
+   * Do not guess a schema: KeeperHub may rename fields or require additional
+   * chain/wallet parameters. The public KeeperHubClient interface is
+   * intentionally independent of those wire details.
+   */
   private async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
     const res = await fetch(this.baseUrl, {
       method: "POST",
@@ -68,7 +86,7 @@ export class HttpKeeperHubClient implements KeeperHubClient {
     if (req.kind === "noop") return { executionId: "noop" };
 
     if (req.kind === "transfer") {
-      const result = (await this.callTool("execute_transfer", {
+      const result = (await this.callTool(TOOL_NAMES.transfer, {
         to: req.recipient,
         amount: req.amountWei,
         tokenAddress: req.tokenAddress,
@@ -77,14 +95,14 @@ export class HttpKeeperHubClient implements KeeperHubClient {
     }
 
     if (req.kind === "protocol_action") {
-      const result = (await this.callTool("execute_protocol_action", {
+      const result = (await this.callTool(TOOL_NAMES.protocolAction, {
         actionType: req.protocolActionType,
         amount: req.amountWei,
       })) as { executionId?: string; id?: string };
       return { executionId: result.executionId ?? result.id ?? "unknown" };
     }
 
-    const result = (await this.callTool("execute_check_and_execute", {
+    const result = (await this.callTool(TOOL_NAMES.checkAndExecute, {
       amount: req.amountWei,
     })) as { executionId?: string; id?: string };
     return { executionId: result.executionId ?? result.id ?? "unknown" };
@@ -92,7 +110,7 @@ export class HttpKeeperHubClient implements KeeperHubClient {
 
   async getStatus(executionId: string): Promise<ExecutionStatus> {
     if (executionId === "noop") return { executionId, status: "success" };
-    const result = (await this.callTool("get_direct_execution_status", {
+    const result = (await this.callTool(TOOL_NAMES.status, {
       executionId,
     })) as {
       status?: string;
