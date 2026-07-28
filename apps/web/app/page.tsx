@@ -140,9 +140,11 @@ function HexLink({
           title={value}
         >
           <span className={styles.hexFull}>{value}</span>
-          <span className={styles.hexShort}>{midEllipsis(value, 12, 10)}</span>
+          <span className={styles.hexShort} aria-hidden="true">
+            {midEllipsis(value, 14, 12)}
+          </span>
         </a>
-        <button type="button" className={styles.copyBtn} onClick={() => void copy()}>
+        <button type="button" className={styles.copyBtn} onClick={() => void copy()} aria-label={`Copy ${label ?? "value"}`}>
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
@@ -200,12 +202,13 @@ export default function Home() {
 
   const cfg = status?.config;
   const obs = status?.observation;
-  const mock = status?.execution?.mock ?? true;
+  const mock = status?.execution?.mock;
   const liveTx =
     status?.submission?.liveTxHash ||
     records.find((r) => r.txHash && !isMockTx(r.txHash))?.txHash ||
     (lastResult?.txHash && !isMockTx(lastResult.txHash) ? lastResult.txHash : null);
   const wallet = cfg?.walletAddress;
+  const actions = (cfg?.allowedActions ?? []).filter((a) => a.kind !== "noop");
 
   return (
     <div className={styles.shell}>
@@ -218,9 +221,13 @@ export default function Home() {
             <h1>Agents Onchain</h1>
           </div>
           <div className={styles.topRight}>
-            <span className={mock ? styles.pillWarn : styles.pillOk}>
-              {mock ? "Mock" : "Live"}
-            </span>
+            {status == null ? (
+              <span className={styles.pillMuted}>{loading ? "Connecting" : "Offline"}</span>
+            ) : (
+              <span className={mock ? styles.pillWarn : styles.pillOk}>
+                {mock ? "Mock" : "Live"}
+              </span>
+            )}
             <span className={styles.pillMuted}>
               {(status?.execution?.chainId ?? "sepolia").toUpperCase()}
               {status?.execution?.networkId ? ` · ${status.execution.networkId}` : ""}
@@ -382,13 +389,18 @@ export default function Home() {
               <h2>Actions</h2>
             </div>
             <ul className={styles.actionList}>
-              {(cfg?.allowedActions ?? []).map((action) => (
+              {actions.map((action) => (
                 <li key={action.id}>
                   <div className={styles.actionTitle}>
                     <strong>{action.id}</strong>
-                    <span>{action.kind}</span>
+                    <span>{action.kind.replace(/_/g, " ")}</span>
                   </div>
-                  <p>{action.description}</p>
+                  <p>
+                    {action.description
+                      .replace(/\s*\(Sepolia proof\)/i, "")
+                      .replace(/\s*\(first live proof\)/i, "")}
+                      .trim()}
+                  </p>
                   <p className={styles.muted}>max {weiToEth(action.maxAmountWei)}</p>
                 </li>
               ))}

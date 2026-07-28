@@ -23,7 +23,7 @@
     {
       "id": "transfer-topup",
       "kind": "transfer",
-      "description": "Transfer tiny native ETH via KeeperHub (Sepolia proof)",
+      "description": "Transfer native ETH to the allowlisted recipient",
       "maxAmountWei": "1000000000000000",
       "recipient": "0xFFaccF66c56C9236B84dbF02BB8CBa76734b702d"
     },

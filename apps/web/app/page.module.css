@@ -113,7 +113,7 @@
 }
 
 .hexLarge .hexLink {
-  font-size: clamp(0.95rem, 2.2vw, 1.15rem);
+  font-size: clamp(1.05rem, 2.4vw, 1.28rem);
 }
 
 .hexLabel {
@@ -125,23 +125,24 @@
 
 .hexControls {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.65rem 0.85rem;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 0.75rem;
 }
 
 .hexLink {
-  display: inline-flex;
+  display: inline;
   min-width: 0;
-  max-width: 100%;
+  flex: 1 1 auto;
   color: var(--signal-deep);
   font-family: var(--font-mono), ui-monospace, monospace;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+  line-height: 1.45;
   text-decoration: underline;
-  text-underline-offset: 0.18em;
-  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1.75px;
   word-break: break-all;
 }
 
@@ -157,7 +158,7 @@
   display: inline;
 }
 
-@media (min-width: 900px) {
+@media (min-width: 720px) {
   .hexFull {
     display: inline;
   }
@@ -169,8 +170,9 @@
 
 .copyBtn,
 .textBtn {
+  flex: 0 0 auto;
   border: 1px solid var(--line);
-  padding: 0.35rem 0.65rem;
+  padding: 0.4rem 0.7rem;
   background: rgba(14, 20, 18, 0.04);
   color: var(--ink);
   font: inherit;
@@ -178,6 +180,7 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .copyBtn:hover,
