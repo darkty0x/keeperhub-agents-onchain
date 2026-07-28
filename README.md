@@ -21,9 +21,10 @@ hash contains `MOCK`.
 
 ## Deployed (Railway)
 
-- **API:** https://api-production-66a0.up.railway.app
-- **Web:** https://web-production-a79e1.up.railway.app
+- **API:** https://keeperhub-agents-api.up.railway.app
+- **Web:** https://keeperhub-agents.up.railway.app
 - Project: https://railway.com/project/3e08936e-8114-47f7-8a6d-4df8dd19c4bb
+- GitHub: https://github.com/darkty0x/keeperhub-agents-onchain
 
 **Live on Sepolia** (`KEEPERHUB_MOCK=0`, `REQUIRE_LIVE_KEEPERHUB=1`).  
 Proof tx: [`0xa1f45ff4…41b3`](https://sepolia.etherscan.io/tx/0xa1f45ff4f674958b51030f3b5ac30e7a2cd94aeb0167ab3aad207774241f41b3)  

@@ -2,8 +2,8 @@
 
 Record against the **live** dashboard only:
 
-- Web: https://web-production-a79e1.up.railway.app
-- API: https://api-production-66a0.up.railway.app
+- Web: https://keeperhub-agents.up.railway.app
+- API: https://keeperhub-agents-api.up.railway.app
 
 Confirm the header shows **Live** (not Mock) before you start.
 

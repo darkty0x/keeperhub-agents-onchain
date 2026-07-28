@@ -245,7 +245,7 @@ export function createApp(deps: ServerDependencies = {}): Express {
         },
         deploy: {
           api: process.env.PUBLIC_API_URL ?? null,
-          web: process.env.PUBLIC_WEB_URL ?? "https://web-production-a79e1.up.railway.app",
+          web: process.env.PUBLIC_WEB_URL ?? "https://keeperhub-agents.up.railway.app",
           hackathon: "https://dorahacks.io/hackathon/agents-onchain",
           demoScript: "docs/demo-script.md",
           goLive: "docs/go-live.md",
