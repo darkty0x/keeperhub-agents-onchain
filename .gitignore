@@ -15,3 +15,4 @@ vitest.config.d.ts
 vitest.config.d.ts.map
 .superpowers/sdd/
 .railway/
+/output
