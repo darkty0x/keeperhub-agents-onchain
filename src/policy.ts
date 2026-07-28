@@ -45,7 +45,8 @@ export function evaluatePolicy(input: PolicyInput): PolicyResult {
     }
   }
 
-  if (input.lastSuccessAt && config.cooldownSeconds > 0) {
+  // Cooldown only gates writes; noop / observe paths stay allowed.
+  if (action.kind !== "noop" && input.lastSuccessAt && config.cooldownSeconds > 0) {
     const last = new Date(input.lastSuccessAt).getTime();
     const elapsed = (now.getTime() - last) / 1000;
     if (elapsed < config.cooldownSeconds) {

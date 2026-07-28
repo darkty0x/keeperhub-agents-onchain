@@ -46,7 +46,22 @@ describe("evaluatePolicy", () => {
     expect(result.allowed).toBe(false);
   });
 
-  it("blocks during cooldown", () => {
+  it("blocks writes during cooldown", () => {
+    const cfg = { ...config(), cooldownSeconds: 120 };
+    const action = cfg.allowedActions.find((a) => a.id === "transfer-topup")!;
+    const result = evaluatePolicy({
+      config: cfg,
+      decision: { actionId: action.id, rationale: "test", fromRules: true },
+      action,
+      amountWei: "1",
+      lastSuccessAt: new Date().toISOString(),
+      now: new Date(),
+    });
+    expect(result.allowed).toBe(false);
+    expect(result.reasons.join(" ")).toMatch(/cooldown/i);
+  });
+
+  it("allows noop during cooldown", () => {
     const cfg = { ...config(), cooldownSeconds: 120 };
     const action = cfg.allowedActions.find((a) => a.id === "noop")!;
     const result = evaluatePolicy({
@@ -57,8 +72,7 @@ describe("evaluatePolicy", () => {
       lastSuccessAt: new Date().toISOString(),
       now: new Date(),
     });
-    expect(result.allowed).toBe(false);
-    expect(result.reasons.join(" ")).toMatch(/cooldown/i);
+    expect(result.allowed).toBe(true);
   });
 
   it("blocks negative amountWei without throwing", () => {
