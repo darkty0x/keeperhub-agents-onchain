@@ -33,12 +33,15 @@ function createDependencies(deps: ServerDependencies) {
 }
 
 function allowedCorsOrigins(): string[] {
-  const origins = ["http://localhost:3000"];
+  const origins = new Set<string>(["http://localhost:3000"]);
   const webOrigin = process.env.NEXT_PUBLIC_WEB_ORIGIN?.trim();
-  if (webOrigin && !origins.includes(webOrigin)) {
-    origins.push(webOrigin);
+  if (webOrigin) origins.add(webOrigin);
+  const extra = process.env.WEB_ORIGINS?.split(",") ?? [];
+  for (const origin of extra) {
+    const trimmed = origin.trim();
+    if (trimmed) origins.add(trimmed);
   }
-  return origins;
+  return [...origins];
 }
 
 function corsMiddleware(req: express.Request, res: express.Response, next: express.NextFunction): void {

@@ -2,3 +2,16 @@ node_modules/
 dist/
 .env
 data/
+*.jsonl
+dorahacks-*.json
+keeperhub-research.json
+tests/**/*.js
+tests/**/*.js.map
+tests/**/*.d.ts
+tests/**/*.d.ts.map
+vitest.config.js
+vitest.config.js.map
+vitest.config.d.ts
+vitest.config.d.ts.map
+.superpowers/sdd/
+.railway/
