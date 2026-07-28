@@ -51,6 +51,9 @@ export async function decide(
   // Prefer protocol_action, else first candidate
   const preferred =
     candidates.find((c) => c.kind === "protocol_action") ?? candidates[0];
+  if (!preferred) {
+    throw new Error("no allowed actions available");
+  }
   return {
     actionId: preferred.id,
     rationale: `Rules: threshold/event trigger → ${preferred.description}`,

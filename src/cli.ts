@@ -1,0 +1,48 @@
+import "dotenv/config";
+import { pathToFileURL } from "node:url";
+import { loadConfig } from "./config.js";
+import { AuditStore } from "./audit.js";
+import { runAgentCycle } from "./agent/core.js";
+import { createKeeperHubClientFromEnv } from "./keeperhub/client.js";
+import { MockKeeperHubClient } from "./keeperhub/mock.js";
+import { startGuardian } from "./modes/guardian.js";
+
+export async function main(args = process.argv.slice(2)): Promise<void> {
+  const [cmd = "run"] = args;
+  const config = loadConfig();
+  const store = new AuditStore(process.env.AUDIT_PATH ?? "data/audit.jsonl");
+  const keeperhub =
+    process.env.KEEPERHUB_API_KEY && process.env.KEEPERHUB_MOCK !== "1"
+      ? createKeeperHubClientFromEnv()
+      : new MockKeeperHubClient();
+
+  if (cmd === "status") {
+    console.log(JSON.stringify({ lastSuccessAt: store.lastSuccessAt(), recent: store.list(5) }, null, 2));
+    return;
+  }
+
+  if (cmd === "replay") {
+    console.log(JSON.stringify(store.list(20), null, 2));
+    return;
+  }
+
+  if (cmd === "watch") {
+    startGuardian({
+      intervalSeconds: config.guardian.intervalSeconds,
+      runCycle: () => runAgentCycle({ trigger: "guardian", config, store, keeperhub }),
+      onError: (err) => console.error(err),
+    });
+    console.log("watching… Ctrl+C to stop");
+    return;
+  }
+
+  const result = await runAgentCycle({ trigger: "manual", config, store, keeperhub });
+  console.log(JSON.stringify(result, null, 2));
+}
+
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

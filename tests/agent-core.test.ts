@@ -5,7 +5,7 @@ import path from "node:path";
 import { runAgentCycle } from "../src/agent/core.js";
 import { AuditStore } from "../src/audit.js";
 import { loadConfig } from "../src/config.js";
-import { MockKeeperHubClient } from "./fixtures/mock-keeperhub.js";
+import { MockKeeperHubClient } from "../src/keeperhub/mock.js";
 
 describe("runAgentCycle", () => {
   let dir: string;

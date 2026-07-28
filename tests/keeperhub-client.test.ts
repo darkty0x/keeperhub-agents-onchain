@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { HttpKeeperHubClient } from "../src/keeperhub/client.js";
-import { MockKeeperHubClient } from "./fixtures/mock-keeperhub.js";
+import { MockKeeperHubClient } from "../src/keeperhub/mock.js";
 
 describe("HttpKeeperHubClient", () => {
   afterEach(() => {
