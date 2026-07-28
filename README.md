@@ -19,6 +19,14 @@ The thin Next.js dashboard in `apps/web` shows status, Run now, audit records,
 Sepolia links for real hashes, and a mock label when `KEEPERHUB_MOCK=1` or the
 hash contains `MOCK`.
 
+## Deployed (Railway)
+
+- **API:** https://api-production-66a0.up.railway.app
+- **Web:** https://web-production-a79e1.up.railway.app
+- Project: https://railway.com/project/3e08936e-8114-47f7-8a6d-4df8dd19c4bb
+
+Currently running with `KEEPERHUB_MOCK=1` until a live `kh_` key is configured.
+
 ## Architecture
 
 ```text
