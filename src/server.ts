@@ -211,6 +211,10 @@ export function createApp(deps: ServerDependencies = {}): Express {
           tagline: "AI agents that finish the last mile onchain",
           hackathon: "https://dorahacks.io/hackathon/agents-onchain",
           docs: "https://docs.keeperhub.com/",
+          github: process.env.PUBLIC_GITHUB_URL ?? "https://github.com/darkty0x/keeperhub-agents-onchain",
+          demoVideo:
+            process.env.PUBLIC_DEMO_VIDEO_URL ??
+            "https://drive.google.com/file/d/1BLSj7qS9dmdUtEqnkwio5w-gnyLzDyhb/view",
         },
         modes: [
           {
@@ -246,6 +250,10 @@ export function createApp(deps: ServerDependencies = {}): Express {
         deploy: {
           api: process.env.PUBLIC_API_URL ?? null,
           web: process.env.PUBLIC_WEB_URL ?? "https://keeperhub-agents.up.railway.app",
+          github: process.env.PUBLIC_GITHUB_URL ?? "https://github.com/darkty0x/keeperhub-agents-onchain",
+          demoVideo:
+            process.env.PUBLIC_DEMO_VIDEO_URL ??
+            "https://drive.google.com/file/d/1BLSj7qS9dmdUtEqnkwio5w-gnyLzDyhb/view",
           hackathon: "https://dorahacks.io/hackathon/agents-onchain",
           demoScript: "docs/demo-script.md",
           goLive: "docs/go-live.md",

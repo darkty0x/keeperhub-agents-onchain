@@ -65,6 +65,17 @@ type X402Gate = {
 };
 
 type AgentStatus = {
+  product?: {
+    github?: string;
+    demoVideo?: string;
+    hackathon?: string;
+  };
+  deploy?: {
+    github?: string;
+    demoVideo?: string;
+    hackathon?: string;
+    web?: string | null;
+  };
   execution?: {
     mock: boolean;
     keeperhubMcp: string;
@@ -107,6 +118,11 @@ const MODES: { id: ModeId; title: string; blurb: string }[] = [
   { id: "x402", title: "x402", blurb: "HTTP 402 → same core" },
   { id: "observe", title: "Observe", blurb: "Read state only" },
 ];
+
+const DEFAULT_GITHUB = "https://github.com/darkty0x/keeperhub-agents-onchain";
+const DEFAULT_DEMO_VIDEO =
+  "https://drive.google.com/file/d/1BLSj7qS9dmdUtEqnkwio5w-gnyLzDyhb/view";
+const DEFAULT_HACKATHON = "https://dorahacks.io/hackathon/agents-onchain";
 
 const CYCLE_STEPS: { id: CycleStep; label: string }[] = [
   { id: "observe", label: "Observe" },
@@ -387,6 +403,11 @@ export default function Home() {
   const wallet = cfg?.walletAddress;
   const challengePayload = paymentChallenge ?? x402?.challenge ?? null;
   const payTo = x402?.payTo ?? cfg?.x402.payTo;
+  const githubUrl = status?.product?.github ?? status?.deploy?.github ?? DEFAULT_GITHUB;
+  const demoVideoUrl =
+    status?.product?.demoVideo ?? status?.deploy?.demoVideo ?? DEFAULT_DEMO_VIDEO;
+  const hackathonUrl =
+    status?.product?.hackathon ?? status?.deploy?.hackathon ?? DEFAULT_HACKATHON;
 
   const stepIndex = CYCLE_STEPS.findIndex((s) => s.id === cycleStep);
 
@@ -407,6 +428,17 @@ export default function Home() {
               Keeper<span>Hub</span>
             </p>
             <h1>Agents Onchain</h1>
+            <nav className={styles.projectLinks} aria-label="Project links">
+              <a href={githubUrl} target="_blank" rel="noreferrer">
+                GitHub
+              </a>
+              <a href={demoVideoUrl} target="_blank" rel="noreferrer">
+                Demo video
+              </a>
+              <a href={hackathonUrl} target="_blank" rel="noreferrer">
+                DoraHacks
+              </a>
+            </nav>
           </div>
           <div className={styles.topRight}>
             {status == null ? (

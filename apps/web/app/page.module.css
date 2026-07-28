@@ -56,6 +56,26 @@
   color: var(--ink-soft);
 }
 
+.projectLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-top: 0.85rem;
+}
+
+.projectLinks a {
+  color: var(--signal-deep);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.projectLinks a:hover {
+  color: var(--ink);
+}
+
 .topRight {
   display: flex;
   flex-wrap: wrap;
