@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getAudit,
   getStatus,
@@ -41,7 +41,6 @@ type AuditRecord = {
 };
 
 type AgentStatus = {
-  product?: { name: string; tagline: string };
   execution?: {
     mock: boolean;
     keeperhubMcp: string;
@@ -74,6 +73,23 @@ type AgentStatus = {
   submission?: { liveTxHash?: string | null };
 };
 
+type ModeId = "guardian" | "event" | "x402" | "observe";
+type CycleStep = "observe" | "decide" | "policy" | "execute";
+
+const MODES: { id: ModeId; title: string; blurb: string }[] = [
+  { id: "guardian", title: "Guardian", blurb: "Watch balance, act on breach" },
+  { id: "event", title: "Event", blurb: "Ingest event, then act" },
+  { id: "x402", title: "Paid API", blurb: "Run after payment" },
+  { id: "observe", title: "Observe", blurb: "Read state only" },
+];
+
+const CYCLE_STEPS: { id: CycleStep; label: string }[] = [
+  { id: "observe", label: "Observe" },
+  { id: "decide", label: "Decide" },
+  { id: "policy", label: "Policy" },
+  { id: "execute", label: "Execute" },
+];
+
 function formatDate(value?: string | null) {
   if (!value) return "—";
   return new Date(value).toLocaleString();
@@ -103,6 +119,13 @@ function explorerTx(hash: string) {
 
 function explorerAddress(address: string) {
   return `https://sepolia.etherscan.io/address/${address}`;
+}
+
+function shortRationale(value?: string) {
+  if (!value) return null;
+  const cleaned = value.replace(/\s+/g, " ").trim();
+  if (cleaned.length <= 120) return cleaned;
+  return `${cleaned.slice(0, 117)}…`;
 }
 
 function HexLink({
@@ -144,7 +167,12 @@ function HexLink({
             {midEllipsis(value, 14, 12)}
           </span>
         </a>
-        <button type="button" className={styles.copyBtn} onClick={() => void copy()} aria-label={`Copy ${label ?? "value"}`}>
+        <button
+          type="button"
+          className={styles.copyBtn}
+          onClick={() => void copy()}
+          aria-label={`Copy ${label ?? "value"}`}
+        >
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
@@ -156,10 +184,13 @@ export default function Home() {
   const [status, setStatus] = useState<AgentStatus | null>(null);
   const [records, setRecords] = useState<AuditRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<AuditRecord | null>(null);
   const [paymentChallenge, setPaymentChallenge] = useState<unknown>(null);
+  const [mode, setMode] = useState<ModeId>("guardian");
+  const [cycleStep, setCycleStep] = useState<CycleStep>("execute");
+  const [x402Paid, setX402Paid] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
@@ -179,36 +210,78 @@ export default function Home() {
     void refresh();
   }, [refresh]);
 
-  async function run(label: string, fn: () => Promise<{ audit?: AuditRecord }>) {
-    setBusy(label);
+  useEffect(() => {
+    if (!lastResult) return;
+    if (lastResult.txHash && !isMockTx(lastResult.txHash)) {
+      setCycleStep("execute");
+    } else if (lastResult.policy && !lastResult.policy.allowed) {
+      setCycleStep("policy");
+    } else if (lastResult.decision?.actionId) {
+      setCycleStep("decide");
+    } else {
+      setCycleStep("observe");
+    }
+  }, [lastResult]);
+
+  async function startRun() {
+    setBusy(true);
     setError(null);
     setPaymentChallenge(null);
+    setCycleStep("observe");
     try {
-      const result = await fn();
+      let result: { audit?: AuditRecord };
+      if (mode === "guardian") {
+        result = await runGuardian(true);
+      } else if (mode === "event") {
+        result = await runEvent({
+          name: "Transfer",
+          payload: {
+            contract: status?.config?.events.contractAddress,
+            signature: status?.config?.events.eventSignature,
+          },
+        });
+      } else if (mode === "x402") {
+        result = await runPaid({
+          forceBreach: true,
+          payment: x402Paid ? "demo" : undefined,
+        });
+      } else {
+        result = await runManual(false);
+      }
       if (result.audit) setLastResult(result.audit);
       await refresh();
     } catch (err) {
       const e = err as Error & { status?: number; body?: unknown };
       if (e.status === 402) {
         setPaymentChallenge(e.body);
-        setError("Payment required (HTTP 402).");
+        setError("Payment required");
+        setCycleStep("policy");
       } else {
         setError(e.message || "Run failed.");
       }
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
   const cfg = status?.config;
-  const obs = status?.observation;
+  const obs = lastResult?.observation ?? status?.observation;
   const mock = status?.execution?.mock;
   const liveTx =
     status?.submission?.liveTxHash ||
     records.find((r) => r.txHash && !isMockTx(r.txHash))?.txHash ||
     (lastResult?.txHash && !isMockTx(lastResult.txHash) ? lastResult.txHash : null);
   const wallet = cfg?.walletAddress;
-  const actions = (cfg?.allowedActions ?? []).filter((a) => a.kind !== "noop");
+
+  const stepIndex = CYCLE_STEPS.findIndex((s) => s.id === cycleStep);
+
+  const runLabel = useMemo(() => {
+    if (busy) return "Running…";
+    if (mode === "guardian") return "Run guardian";
+    if (mode === "event") return "Ingest event";
+    if (mode === "x402") return x402Paid ? "Run paid" : "Call unpaid";
+    return "Observe";
+  }, [busy, mode, x402Paid]);
 
   return (
     <div className={styles.shell}>
@@ -246,12 +319,7 @@ export default function Home() {
 
         <section className={styles.identity} aria-label="Network identity">
           {wallet ? (
-            <HexLink
-              large
-              label="Watched wallet"
-              value={wallet}
-              href={explorerAddress(wallet)}
-            />
+            <HexLink large label="Watched wallet" value={wallet} href={explorerAddress(wallet)} />
           ) : (
             <p className={styles.muted}>{loading ? "Loading…" : "No wallet configured"}</p>
           )}
@@ -268,20 +336,17 @@ export default function Home() {
         <section className={styles.metrics} aria-label="Live metrics">
           <article>
             <span>Balance</span>
-            <strong>{weiToEth(obs?.nativeBalanceWei)}</strong>
+            <strong>{weiToEth(status?.observation?.nativeBalanceWei ?? obs?.nativeBalanceWei)}</strong>
           </article>
           <article>
-            <span>Metric</span>
+            <span>Threshold</span>
             <strong>
-              {obs?.metricValue?.toFixed?.(4) ?? "—"}
-              <small>
-                {" "}
-                / {obs?.threshold ?? "—"} {obs?.thresholdDirection ?? ""}
-              </small>
+              {cfg?.guardian.threshold ?? "—"}
+              <small> {cfg?.guardian.thresholdDirection ?? ""}</small>
             </strong>
           </article>
           <article>
-            <span>Last run</span>
+            <span>Outcome</span>
             <strong className={styles.cap}>{lastResult?.outcome ?? "idle"}</strong>
           </article>
           <article>
@@ -290,180 +355,271 @@ export default function Home() {
           </article>
         </section>
 
-        <section className={styles.actions} aria-labelledby="run-heading">
+        <section className={styles.flow} aria-labelledby="flow-heading">
           <div className={styles.sectionHead}>
-            <h2 id="run-heading">Run</h2>
+            <h2 id="flow-heading">1 · Choose mode</h2>
           </div>
-          <div className={styles.runGrid}>
-            <button
-              type="button"
-              disabled={Boolean(busy)}
-              onClick={() => void run("guardian", () => runGuardian(true))}
-            >
-              {busy === "guardian" ? "Running…" : "Guardian"}
-            </button>
-            <button
-              type="button"
-              disabled={Boolean(busy)}
-              onClick={() =>
-                void run("event", () =>
-                  runEvent({
-                    name: "Transfer",
-                    payload: {
-                      contract: cfg?.events.contractAddress,
-                      signature: cfg?.events.eventSignature,
-                    },
-                  }),
-                )
-              }
-            >
-              {busy === "event" ? "Running…" : "Event"}
-            </button>
-            <button
-              type="button"
-              disabled={Boolean(busy)}
-              onClick={() => void run("x402-unpaid", () => runPaid({ forceBreach: true }))}
-            >
-              {busy === "x402-unpaid" ? "…" : "x402 unpaid"}
-            </button>
-            <button
-              type="button"
-              disabled={Boolean(busy)}
-              onClick={() =>
-                void run("x402-paid", () => runPaid({ forceBreach: true, payment: "demo" }))
-              }
-            >
-              {busy === "x402-paid" ? "Running…" : "x402 paid"}
-            </button>
-            <button
-              type="button"
-              className={styles.secondary}
-              disabled={Boolean(busy)}
-              onClick={() => void run("manual", () => runManual(false))}
-            >
-              {busy === "manual" ? "Running…" : "Observe"}
-            </button>
+          <div className={styles.modeGrid} role="listbox" aria-label="Agent mode">
+            {MODES.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="option"
+                aria-selected={mode === item.id}
+                className={`${styles.modeCard} ${mode === item.id ? styles.modeActive : ""}`}
+                onClick={() => setMode(item.id)}
+              >
+                <strong>{item.title}</strong>
+                <span>{item.blurb}</span>
+              </button>
+            ))}
           </div>
-          {error && <p className={styles.error}>{error}</p>}
-          {paymentChallenge != null && (
-            <pre className={styles.challenge}>{JSON.stringify(paymentChallenge, null, 2)}</pre>
-          )}
+
+          {mode === "x402" ? (
+            <div className={styles.payToggle} role="group" aria-label="Payment">
+              <button
+                type="button"
+                className={x402Paid ? styles.toggleOn : styles.toggleOff}
+                onClick={() => setX402Paid(true)}
+              >
+                Paid
+              </button>
+              <button
+                type="button"
+                className={!x402Paid ? styles.toggleOn : styles.toggleOff}
+                onClick={() => setX402Paid(false)}
+              >
+                Unpaid
+              </button>
+            </div>
+          ) : null}
+
+          <button
+            type="button"
+            className={styles.primaryCta}
+            disabled={busy || !status}
+            onClick={() => void startRun()}
+          >
+            {runLabel}
+          </button>
+
+          {error ? <p className={styles.error}>{error}</p> : null}
+          {paymentChallenge != null ? (
+            <p className={styles.muted}>HTTP 402 — payment challenge returned. Switch to Paid and run again.</p>
+          ) : null}
         </section>
 
-        <section className={styles.twoCol}>
-          <div>
-            <div className={styles.sectionHead}>
-              <h2>Policy</h2>
-            </div>
-            <dl className={styles.kv}>
-              <div>
-                <dt>Kill switch</dt>
-                <dd className={cfg?.killSwitch ? styles.warn : styles.ok}>
-                  {cfg?.killSwitch ? "ON" : "OFF"}
-                </dd>
-              </div>
-              <div>
-                <dt>Max amount</dt>
-                <dd>{weiToEth(cfg?.maxAmountWei)}</dd>
-              </div>
-              <div>
-                <dt>Cooldown</dt>
-                <dd>{cfg?.cooldownSeconds ?? "—"}s</dd>
-              </div>
-              <div>
-                <dt>Decision</dt>
-                <dd>{cfg?.preferTransferFirst ? "Transfer first" : "Protocol first"}</dd>
-              </div>
-            </dl>
-            {cfg?.recipientAllowlist?.[0] ? (
-              <HexLink
-                label="Allowlisted recipient"
-                value={cfg.recipientAllowlist[0]}
-                href={explorerAddress(cfg.recipientAllowlist[0])}
-              />
-            ) : null}
-          </div>
-
-          <div>
-            <div className={styles.sectionHead}>
-              <h2>Actions</h2>
-            </div>
-            <ul className={styles.actionList}>
-              {actions.map((action) => (
-                <li key={action.id}>
-                  <div className={styles.actionTitle}>
-                    <strong>{action.id}</strong>
-                    <span>{action.kind.replace(/_/g, " ")}</span>
-                  </div>
-                  <p>
-                    {action.description
-                      .replace(/\s*\(Sepolia proof\)/i, "")
-                      .replace(/\s*\(first live proof\)/i, "")
-                      .trim()}
-                  </p>
-                  <p className={styles.muted}>max {weiToEth(action.maxAmountWei)}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        {lastResult && (
-          <section className={styles.last} aria-labelledby="last-heading">
-            <div className={styles.sectionHead}>
-              <h2 id="last-heading">Last cycle</h2>
+        <section className={styles.cycle} aria-labelledby="cycle-heading">
+          <div className={styles.sectionHead}>
+            <h2 id="cycle-heading">2 · Cycle</h2>
+            {lastResult ? (
               <p>
                 {lastResult.trigger} · {formatDate(lastResult.at)}
               </p>
-            </div>
-            <div className={styles.lastGrid}>
-              <div>
-                <span>Decision</span>
-                <strong>{lastResult.decision?.actionId ?? "—"}</strong>
-              </div>
-              <div>
-                <span>Policy</span>
-                <strong>{lastResult.policy?.allowed ? "Allowed" : "Blocked"}</strong>
-              </div>
-              <div>
-                <span>Outcome</span>
-                <strong className={styles.cap}>{lastResult.outcome}</strong>
-              </div>
-            </div>
-            {lastResult.txHash && !isMockTx(lastResult.txHash) ? (
-              <HexLink
-                large
-                label="Transaction"
-                value={lastResult.txHash}
-                href={explorerTx(lastResult.txHash)}
-              />
-            ) : null}
-            {lastResult.error ? <p className={styles.error}>{lastResult.error}</p> : null}
-          </section>
-        )}
+            ) : (
+              <p>Select a mode and run</p>
+            )}
+          </div>
 
-        <section className={styles.audit} aria-labelledby="audit-heading">
+          <div className={styles.stepRail} role="tablist" aria-label="Cycle steps">
+            {CYCLE_STEPS.map((step, index) => {
+              const done = Boolean(lastResult) && index < stepIndex;
+              const active = cycleStep === step.id;
+              return (
+                <button
+                  key={step.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  className={`${styles.stepTab} ${active ? styles.stepActive : ""} ${done ? styles.stepDone : ""}`}
+                  disabled={!lastResult && !busy}
+                  onClick={() => setCycleStep(step.id)}
+                >
+                  <em>{index + 1}</em>
+                  {step.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className={styles.stepPanel} role="tabpanel">
+            {!lastResult && !busy ? (
+              <p className={styles.muted}>Nothing to show yet.</p>
+            ) : busy && !lastResult ? (
+              <p className={styles.muted}>Observing…</p>
+            ) : cycleStep === "observe" ? (
+              <div className={styles.factGrid}>
+                <div>
+                  <span>Balance</span>
+                  <strong>{weiToEth(obs?.nativeBalanceWei)}</strong>
+                </div>
+                <div>
+                  <span>Metric</span>
+                  <strong>
+                    {obs?.metricValue?.toFixed?.(4) ?? "—"}
+                    <small>
+                      {" "}
+                      / {obs?.threshold ?? cfg?.guardian.threshold ?? "—"}{" "}
+                      {obs?.thresholdDirection ?? cfg?.guardian.thresholdDirection ?? ""}
+                    </small>
+                  </strong>
+                </div>
+                {obs?.walletAddress || wallet ? (
+                  <div className={styles.factWide}>
+                    <HexLink
+                      label="Wallet"
+                      value={(obs?.walletAddress || wallet)!}
+                      href={explorerAddress((obs?.walletAddress || wallet)!)}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : cycleStep === "decide" ? (
+              <div className={styles.factGrid}>
+                <div>
+                  <span>Action</span>
+                  <strong>{lastResult?.decision?.actionId ?? "—"}</strong>
+                </div>
+                <div>
+                  <span>Source</span>
+                  <strong>{lastResult?.decision?.fromRules ? "Rules" : "Model"}</strong>
+                </div>
+                {shortRationale(lastResult?.decision?.rationale) ? (
+                  <div className={styles.factWide}>
+                    <span>Why</span>
+                    <p>{shortRationale(lastResult?.decision?.rationale)}</p>
+                  </div>
+                ) : null}
+              </div>
+            ) : cycleStep === "policy" ? (
+              <div className={styles.factGrid}>
+                <div>
+                  <span>Result</span>
+                  <strong className={lastResult?.policy?.allowed ? styles.ok : styles.warn}>
+                    {lastResult?.policy?.allowed ? "Allowed" : "Blocked"}
+                  </strong>
+                </div>
+                <div>
+                  <span>Max amount</span>
+                  <strong>{weiToEth(cfg?.maxAmountWei)}</strong>
+                </div>
+                <div>
+                  <span>Kill switch</span>
+                  <strong className={cfg?.killSwitch ? styles.warn : styles.ok}>
+                    {cfg?.killSwitch ? "ON" : "OFF"}
+                  </strong>
+                </div>
+                <div>
+                  <span>Cooldown</span>
+                  <strong>{cfg?.cooldownSeconds ?? "—"}s</strong>
+                </div>
+                {cfg?.recipientAllowlist?.[0] ? (
+                  <div className={styles.factWide}>
+                    <HexLink
+                      label="Recipient"
+                      value={cfg.recipientAllowlist[0]}
+                      href={explorerAddress(cfg.recipientAllowlist[0])}
+                    />
+                  </div>
+                ) : null}
+                {lastResult?.policy?.reasons?.length ? (
+                  <div className={styles.factWide}>
+                    <span>Reasons</span>
+                    <p>{lastResult.policy.reasons.join(" · ")}</p>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className={styles.factGrid}>
+                <div>
+                  <span>Outcome</span>
+                  <strong className={styles.cap}>{lastResult?.outcome ?? "—"}</strong>
+                </div>
+                <div>
+                  <span>Execution</span>
+                  <strong className={styles.mono}>
+                    {lastResult?.executionId
+                      ? midEllipsis(lastResult.executionId, 10, 8)
+                      : "—"}
+                  </strong>
+                </div>
+                {lastResult?.txHash && !isMockTx(lastResult.txHash) ? (
+                  <div className={styles.factWide}>
+                    <HexLink
+                      large
+                      label="Transaction"
+                      value={lastResult.txHash}
+                      href={explorerTx(lastResult.txHash)}
+                    />
+                  </div>
+                ) : (
+                  <div className={styles.factWide}>
+                    <span>Transaction</span>
+                    <p className={styles.muted}>
+                      {lastResult?.outcome === "noop"
+                        ? "No transaction — conditions not met"
+                        : lastResult?.error ?? "No transaction"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {lastResult ? (
+            <div className={styles.stepNav}>
+              <button
+                type="button"
+                className={styles.navBtn}
+                disabled={stepIndex <= 0}
+                onClick={() => setCycleStep(CYCLE_STEPS[stepIndex - 1]!.id)}
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                className={styles.navBtn}
+                disabled={stepIndex >= CYCLE_STEPS.length - 1}
+                onClick={() => setCycleStep(CYCLE_STEPS[stepIndex + 1]!.id)}
+              >
+                Next
+              </button>
+            </div>
+          ) : null}
+        </section>
+
+        <section className={styles.history} aria-labelledby="history-heading">
           <div className={styles.sectionHead}>
-            <h2 id="audit-heading">Activity</h2>
+            <h2 id="history-heading">History</h2>
           </div>
           {records.length === 0 ? (
             <p className={styles.muted}>{loading ? "Loading…" : "No runs yet."}</p>
           ) : (
-            <ul className={styles.activity}>
+            <ul className={styles.historyList}>
               {records.map((record) => {
                 const live = Boolean(record.txHash && !isMockTx(record.txHash));
                 return (
                   <li key={record.id}>
-                    <div className={styles.activityHead}>
-                      <strong className={styles.cap}>{record.outcome}</strong>
-                      <span>
+                    <div className={styles.historyMeta}>
+                      <span
+                        className={`${styles.outcome} ${
+                          record.outcome === "success"
+                            ? styles.outcomeOk
+                            : record.outcome === "error"
+                              ? styles.outcomeBad
+                              : styles.outcomeMute
+                        }`}
+                      >
+                        {record.outcome}
+                      </span>
+                      <span className={styles.historyMode}>
                         {record.trigger}
                         {record.decision?.actionId ? ` · ${record.decision.actionId}` : ""}
                       </span>
                       <time>{formatDate(record.at)}</time>
                     </div>
                     {live && record.txHash ? (
-                      <HexLink value={record.txHash} href={explorerTx(record.txHash)} />
+                      <HexLink value={record.txHash} href={explorerTx(record.txHash)} label="Transaction" />
                     ) : (
                       <p className={styles.muted}>
                         {record.outcome === "noop"
