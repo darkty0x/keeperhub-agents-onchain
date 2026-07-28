@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { ChainId } from "../types.js";
 import { networkIdForChain } from "./network.js";
 import type { ExecuteRequest, ExecuteHandle, ExecutionStatus, KeeperHubClient } from "./types.js";
@@ -183,7 +184,8 @@ export class HttpKeeperHubClient implements KeeperHubClient {
       chain_id: networkIdForChain(req.chainId),
       to_address: req.recipient,
       amount: weiToHumanAmount(req.amountWei),
-      idempotency_key: `agents-onchain-${req.actionId}-${req.amountWei}`,
+      // Unique per call so repeat demo runs create new executions (not the prior tx).
+      idempotency_key: `agents-onchain-${req.actionId}-${req.amountWei}-${randomUUID()}`,
     };
     if (req.tokenAddress) args.token_address = req.tokenAddress;
     return args;
