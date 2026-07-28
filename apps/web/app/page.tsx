@@ -398,7 +398,7 @@ export default function Home() {
                   <p>
                     {action.description
                       .replace(/\s*\(Sepolia proof\)/i, "")
-                      .replace(/\s*\(first live proof\)/i, "")}
+                      .replace(/\s*\(first live proof\)/i, "")
                       .trim()}
                   </p>
                   <p className={styles.muted}>max {weiToEth(action.maxAmountWei)}</p>
