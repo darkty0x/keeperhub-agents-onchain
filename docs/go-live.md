@@ -7,10 +7,11 @@ demo video, and public GitHub. This guide is the only path that counts for judgi
 
 1. KeeperHub account at [app.keeperhub.com](https://app.keeperhub.com)
 2. Organization API key (`kh_…`) under **Settings → API Keys → Organisation**
-3. Wallet integration configured and **funded on Sepolia** (gas for a tiny transfer)
-4. Two real addresses:
-   - `WALLET_ADDRESS` — RPC watch target (can be the KeeperHub wallet)
-   - `RECIPIENT_ADDRESS` — allowlisted transfer recipient (must differ if you want a visible transfer)
+3. Wallet integration configured — use the **same address shown in the KeeperHub UI**
+4. **Fund that wallet with Sepolia ETH** (required — transfers fail at 0 balance)
+   - Recommended if you have no mainnet ETH: [Sepolia PoW Faucet](https://sepolia-faucet.pk910.de/)
+   - Alchemy/Google faucets need ~0.001 mainnet ETH eligibility
+5. `WALLET_ADDRESS` / `RECIPIENT_ADDRESS` = that KeeperHub wallet (or a second allowlisted recipient)
 
 ## Local live run
 

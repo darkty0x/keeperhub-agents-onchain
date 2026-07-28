@@ -220,9 +220,10 @@ export function createApp(deps: ServerDependencies = {}): Express {
                   "Publish GitHub + submit BUIDL on DoraHacks",
                 ]
               : [
-                  "Live key is configured — run Guardian breach (tiny transfer) and wait for txHash",
-                  "Verify on Sepolia Etherscan, then set SUBMISSION_TX_HASH / update README",
-                  "Record video (docs/demo-script.md)",
+                  `Fund Sepolia ETH to ${config.walletAddress} (balance is currently insufficient for transfer)`,
+                  "Use https://sepolia-faucet.pk910.de/ (PoW faucet) — Alchemy/Google need mainnet ETH",
+                  "Then run Guardian breach or: npm run live-submit",
+                  "Verify on Sepolia Etherscan, set SUBMISSION_TX_HASH, update README",
                 ],
         },
         submission: {
