@@ -25,10 +25,9 @@ hash contains `MOCK`.
 - **Web:** https://web-production-a79e1.up.railway.app
 - Project: https://railway.com/project/3e08936e-8114-47f7-8a6d-4df8dd19c4bb
 
-**Mock is NOT submission-ready.** DoraHacks requires a real KeeperHub transaction.
-The Railway deploy is still on `KEEPERHUB_MOCK=1` until a live `kh_` key is set —
-do not submit the BUIDL in that state. Go-live: [`docs/go-live.md`](docs/go-live.md).
-Demo narration: [`docs/demo-script.md`](docs/demo-script.md).
+**Live on Sepolia** (`KEEPERHUB_MOCK=0`, `REQUIRE_LIVE_KEEPERHUB=1`).  
+Proof tx: [`0xa1f45ff4…41b3`](https://sepolia.etherscan.io/tx/0xa1f45ff4f674958b51030f3b5ac30e7a2cd94aeb0167ab3aad207774241f41b3)  
+Demo narration: [`docs/demo-script.md`](docs/demo-script.md) · Go-live notes: [`docs/go-live.md`](docs/go-live.md).
 
 ## Architecture
 
@@ -159,15 +158,16 @@ then run one small allowlisted Sepolia action and record the hash below.
 
 ## Submission checklist
 
-- [ ] Public GitHub repository link: `PLACEHOLDER`
-- [ ] Approximately two-minute demo video link: `PLACEHOLDER`
+- [ ] Public GitHub / GitLab / Bitbucket link
+- [ ] ~2 minute demo video (YouTube / Loom / Drive, public or unlisted)
 - [x] Real KeeperHub Sepolia transaction: `0xa1f45ff4f674958b51030f3b5ac30e7a2cd94aeb0167ab3aad207774241f41b3`
-      exact `0x...` hash only after live execution)
-- [x] Etherscan link: https://sepolia.etherscan.io/tx/0xa1f45ff4f674958b51030f3b5ac30e7a2cd94aeb0167ab3aad207774241f41b3
-- [x] Shared core with guardian, event, and paid API modes
-- [x] Policy gate, kill switch, cooldown, allowlists, and audit trail
-- [x] CLI and dashboard demo path (all modes + cycle breakdown)
-- [ ] Live `mcp-probe` argument alignment and one successful Sepolia action
+- [x] Etherscan: https://sepolia.etherscan.io/tx/0xa1f45ff4f674958b51030f3b5ac30e7a2cd94aeb0167ab3aad207774241f41b3
+- [x] Shared core: guardian, event, paid API
+- [x] Policy gate, kill switch, cooldown, allowlists, audit trail
+- [x] Live dashboard with mode → cycle steps → history
+- [x] Live KeeperHub MCP write on Sepolia
+
+DoraHacks BUIDL: https://dorahacks.io/hackathon/agents-onchain
 
 ## Verification
 

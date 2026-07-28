@@ -1,45 +1,86 @@
 # KeeperHub Agents Onchain — two-minute demo
 
-**Record only against LIVE KeeperHub** (not mock). Deployed URLs after go-live:
+Record against the **live** dashboard only:
 
 - Web: https://web-production-a79e1.up.railway.app
 - API: https://api-production-66a0.up.railway.app
 
-If the badge still says NOT SUBMISSION READY, stop and finish [`go-live.md`](./go-live.md).
+Confirm the header shows **Live** (not Mock) before you start.
+
+Proof tx (keep this tab ready):  
+https://sepolia.etherscan.io/tx/0xa1f45ff4f674958b51030f3b5ac30e7a2cd94aeb0167ab3aad207774241f41b3
+
+## Before record
+
+1. Hard-refresh the dashboard.
+2. If the last guardian run was within ~60s, wait for cooldown or start with Event / Observe first.
+3. Close unrelated tabs; zoom so wallet + tx hash stay readable.
+4. Optional second screen: Etherscan tx page already open.
 
 ## Timeline and narration
 
-### 0:00–0:20 — Product + honesty
+### 0:00–0:25 — What it is
 
-“KeeperHub Agents Onchain is one TypeScript agent with three triggers: guardian,
-event response, and a paid x402 API. Observe → decide → policy → KeeperHub MCP →
-audit. The watched address is an RPC observe target; the **KeeperHub org wallet**
-signs transactions — there is no MetaMask connect in this UI.”
+“KeeperHub Agents Onchain is one TypeScript agent with three triggers—guardian,
+event, and a paid API—sharing one pipeline: observe, decide, policy, KeeperHub
+execution, audit.”
 
-Point to LIVE badge, watched address, execution signer, submission tx link.
+Point to:
 
-### 0:20–0:50 — Guardian live write
+- **Live** + Sepolia
+- **Watched wallet** (click + copy)
+- **Latest transaction** (full hash, click through to Etherscan)
 
-Click **Run guardian breach**.
+“The watched address is the RPC observe target. KeeperHub’s org wallet signs—
+there is no MetaMask in this UI.”
 
-“Rules prefer a tiny allowlisted transfer for the first Sepolia proof. Policy runs
-before KeeperHub. The audit row shows a real hash — open Sepolia Etherscan.”
+### 0:25–0:55 — Guardian run + cycle steps
 
-### 0:50–1:10 — Event mode
+Select **Guardian** → **Run guardian**.
 
-Click **Ingest demo event**. Same core, different trigger.
+When the cycle fills in, click through:
 
-### 1:10–1:30 — x402 boundary
+1. **Observe** — balance / threshold  
+2. **Decide** — action chosen  
+3. **Policy** — allowed / limits  
+4. **Execute** — outcome + transaction link  
 
-**Call unpaid** → 402. **Pay demo + run** → same core after local demo payment header
-(not production payment verification).
+“Same core every time. Policy gates the write. The hash is a real Sepolia
+KeeperHub execution.”
 
-### 1:30–1:50 — Manual noop (optional)
+Open the tx link briefly (or cut to the prepared Etherscan tab).
 
-Click **Manual observe (often noop)**. Explain: healthy metrics → noop → no tx. That
-is correct behavior, not a missing wallet.
+### 0:55–1:15 — Event mode
+
+Select **Event** → **Ingest event**.
+
+“Different trigger, same cycle.”
+
+Show Decide → Execute quickly (skip long pauses).
+
+### 1:15–1:35 — Paid API boundary
+
+Select **Paid API** → **Unpaid** → run → show payment required.
+
+Switch to **Paid** → run → show the cycle completing.
+
+“x402-style gate before the same execution core.”
+
+### 1:35–1:50 — Observe (optional)
+
+Select **Observe** → run.
+
+“Read-only path. If conditions are healthy, outcome can be noop—no fake tx.”
 
 ### 1:50–2:00 — Close
 
-“Submission is GitHub, this video, and this exact Sepolia transaction executed through
-KeeperHub.”
+Scroll **History**. Point again at the live Sepolia hash.
+
+“Submission: public GitHub, this demo, and that KeeperHub transaction.”
+
+## Recording tips
+
+- Prefer 1080p, mic close, no music.
+- If a run is **blocked** by cooldown, narrate it honestly and click **Execute**
+  on the previous success (or open the pinned Etherscan link).
+- Do not show API keys, Railway env, or `.env` files on camera.
