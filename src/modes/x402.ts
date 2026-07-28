@@ -24,6 +24,6 @@ export function hasValidPayment(
   if (!payment) return false;
   if (process.env.X402_DEMO_BYPASS === "1" && String(payment) === "demo") return true;
   // Live path: verify signature / settlement against KeeperHub agentic wallet docs.
-  // Until wired, require bypass only in local demo; production must set verifier.
-  return Boolean(process.env.X402_PAYMENT_VERIFIER_URL);
+  // Fail closed until real verifier is wired — VERIFIER_URL alone is not payment proof.
+  return false;
 }

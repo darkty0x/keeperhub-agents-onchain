@@ -21,4 +21,12 @@ describe("x402", () => {
     expect(hasValidPayment({ "x-payment": "demo" }, config)).toBe(true);
     delete process.env.X402_DEMO_BYPASS;
   });
+
+  it("rejects arbitrary payment header when verifier URL is set (fail closed)", () => {
+    process.env.X402_PAYMENT_VERIFIER_URL = "https://verifier.example/verify";
+    expect(hasValidPayment({ "x-payment": "random-payment-token" }, config)).toBe(
+      false,
+    );
+    delete process.env.X402_PAYMENT_VERIFIER_URL;
+  });
 });
