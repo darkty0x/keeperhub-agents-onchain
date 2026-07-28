@@ -21,7 +21,7 @@ export function evaluatePolicy(input: PolicyInput): PolicyResult {
   const now = input.now ?? new Date();
 
   if (typeof amountWei !== "string" || !NON_NEGATIVE_WEI.test(amountWei)) {
-    return { allowed: false, reasons: [`invalid amountWei: ${amountWei}`] };
+    return { allowed: false, reasons: ["invalid amountWei"] };
   }
 
   if (config.killSwitch) reasons.push("kill switch enabled");

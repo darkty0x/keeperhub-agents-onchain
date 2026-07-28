@@ -87,6 +87,19 @@ describe("evaluatePolicy", () => {
     expect(result.reasons.join(" ")).toMatch(/invalid amountWei/i);
   });
 
+  it("blocks Symbol amountWei without throwing", () => {
+    const cfg = config();
+    const action = cfg.allowedActions.find((a) => a.id === "transfer-topup")!;
+    const result = evaluatePolicy({
+      config: cfg,
+      decision: { actionId: action.id, rationale: "test", fromRules: true },
+      action,
+      amountWei: Symbol("x") as unknown as string,
+    });
+    expect(result.allowed).toBe(false);
+    expect(result.reasons).toEqual(["invalid amountWei"]);
+  });
+
   it("blocks malformed amountWei without throwing", () => {
     const cfg = config();
     const action = cfg.allowedActions.find((a) => a.id === "transfer-topup")!;
