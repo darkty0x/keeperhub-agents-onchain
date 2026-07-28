@@ -20,7 +20,7 @@ export function evaluatePolicy(input: PolicyInput): PolicyResult {
   const { config, action, amountWei } = input;
   const now = input.now ?? new Date();
 
-  if (!NON_NEGATIVE_WEI.test(amountWei)) {
+  if (typeof amountWei !== "string" || !NON_NEGATIVE_WEI.test(amountWei)) {
     return { allowed: false, reasons: [`invalid amountWei: ${amountWei}`] };
   }
 
