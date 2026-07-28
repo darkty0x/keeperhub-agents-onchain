@@ -24,6 +24,11 @@ function formatDate(value?: string | null) {
   return new Date(value).toLocaleString();
 }
 
+function isMockTransaction(txHash: string): boolean {
+  if (/mock/i.test(txHash)) return true;
+  return process.env.NEXT_PUBLIC_KEEPERHUB_MOCK === "1";
+}
+
 export default function Home() {
   const [status, setStatus] = useState<Status | null>(null);
   const [records, setRecords] = useState<AuditRecord[]>([]);
@@ -105,13 +110,19 @@ export default function Home() {
                 </span>
                 <span>{formatDate(record.at)}</span>
                 {record.txHash ? (
-                  <a
-                    href={`https://sepolia.etherscan.io/tx/${record.txHash}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    View transaction
-                  </a>
+                  isMockTransaction(record.txHash) ? (
+                    <span className={styles.muted} title="Local mock execution only">
+                      mock (not on explorer)
+                    </span>
+                  ) : (
+                    <a
+                      href={`https://sepolia.etherscan.io/tx/${record.txHash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      View transaction
+                    </a>
+                  )
                 ) : (
                   <span className={styles.muted}>{record.error ?? "No transaction"}</span>
                 )}

@@ -62,6 +62,6 @@ describe("runAgentCycle", () => {
     });
 
     expect(result.audit.outcome).toBe("success");
-    expect(result.audit.txHash).toMatch(/^0x/);
+    expect(result.audit.txHash).toMatch(/^0xMOCK/i);
   });
 });

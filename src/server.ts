@@ -22,10 +22,12 @@ export interface ServerDependencies {
 function createDependencies(deps: ServerDependencies) {
   const config = deps.config ?? loadConfig();
   const store = deps.store ?? new AuditStore(process.env.AUDIT_PATH ?? "data/audit.jsonl");
+  const apiKeyEnv = config.keeperhubApiKeyEnv;
+  const apiKey = process.env[apiKeyEnv];
   const keeperhub =
     deps.keeperhub ??
-    (process.env.KEEPERHUB_API_KEY && process.env.KEEPERHUB_MOCK !== "1"
-      ? createKeeperHubClientFromEnv()
+    (apiKey && process.env.KEEPERHUB_MOCK !== "1"
+      ? createKeeperHubClientFromEnv(apiKeyEnv)
       : new MockKeeperHubClient());
   return { config, store, keeperhub };
 }

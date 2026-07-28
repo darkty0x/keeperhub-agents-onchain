@@ -15,7 +15,8 @@ export class MockKeeperHubClient implements KeeperHubClient {
     return {
       executionId,
       status: "success",
-      txHash: `0x${"ab".repeat(32)}`,
+      // Deliberately non-explorer hash; UI treats `MOCK` as local-only.
+      txHash: `0xMOCK${randomUUID().replace(/-/g, "").toLowerCase()}`.slice(0, 66),
     };
   }
 

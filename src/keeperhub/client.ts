@@ -152,8 +152,12 @@ export class HttpKeeperHubClient implements KeeperHubClient {
   }
 }
 
-export function createKeeperHubClientFromEnv(): KeeperHubClient {
-  const key = process.env.KEEPERHUB_API_KEY;
-  if (!key) throw new Error("KEEPERHUB_API_KEY is required for live execution");
+export function createKeeperHubClientFromEnv(
+  apiKeyEnv = "KEEPERHUB_API_KEY",
+): KeeperHubClient {
+  const key = process.env[apiKeyEnv];
+  if (!key) {
+    throw new Error(`${apiKeyEnv} is required for live execution`);
+  }
   return new HttpKeeperHubClient(key);
 }

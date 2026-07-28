@@ -16,7 +16,8 @@ default network.
   audit record with execution and transaction identifiers.
 
 The thin Next.js dashboard in `apps/web` shows status, Run now, audit records,
-and Sepolia transaction links.
+Sepolia links for real hashes, and a mock label when `KEEPERHUB_MOCK=1` or the
+hash contains `MOCK`.
 
 ## Architecture
 
@@ -33,7 +34,7 @@ triggers, `src/keeperhub/client.ts` contains the MCP adapter, and
 
 ## Setup
 
-Requirements: Node.js 20+, npm, and (for live execution) a KeeperHub account,
+Requirements: Node.js 22+, npm, and (for live execution) a KeeperHub account,
 an organization API key beginning with `kh_`, and a funded Sepolia wallet as
 required by the KeeperHub account.
 
@@ -44,8 +45,11 @@ cp config/default.json config/local.json   # edit addresses and limits
 CONFIG_PATH=config/local.json KEEPERHUB_MOCK=1 npm run cli -- run
 ```
 
-Local mode never creates a real transaction. For live execution, export a real
-key and keep the mock disabled:
+With `KEEPERHUB_MOCK=1`, the mock client returns hashes prefixed with
+`0xMOCK…`; they are not on Sepolia and the dashboard shows “mock (not on
+explorer)”. For live execution, export a real key (name from
+`keeperhubApiKeyEnv` in config, default `KEEPERHUB_API_KEY`) and keep the mock
+disabled:
 
 ```bash
 export CONFIG_PATH=config/local.json
@@ -110,7 +114,7 @@ Open `http://localhost:3000`.
 
 | Variable | Purpose |
 | --- | --- |
-| `KEEPERHUB_API_KEY` | Live KeeperHub organization key (`kh_...`) |
+| `KEEPERHUB_API_KEY` | Default env name for the live KeeperHub key (`kh_...`); override via `keeperhubApiKeyEnv` in config |
 | `KEEPERHUB_MOCK` | Set to `1` to force the local mock |
 | `KEEPERHUB_MCP_URL` | Optional MCP endpoint override |
 | `CONFIG_PATH` | JSON config path; defaults to `config/default.json` |
@@ -160,4 +164,6 @@ npm test
 npm run build
 ```
 
-The local mock path intentionally produces no real transaction hash.
+The local mock path produces `0xMOCK…` placeholders only—not verifiable Sepolia
+transactions. Live hashes appear only after a successful KeeperHub execution
+with mock disabled and a valid API key.

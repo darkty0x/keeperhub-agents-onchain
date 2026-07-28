@@ -46,6 +46,6 @@ describe("MockKeeperHubClient", () => {
       chainId: "sepolia",
     });
     expect(status.status).toBe("success");
-    expect(status.txHash).toMatch(/^0x/);
+    expect(status.txHash).toMatch(/^0xMOCK/i);
   });
 });
