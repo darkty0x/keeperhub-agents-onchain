@@ -30,9 +30,33 @@ function createDependencies(deps: ServerDependencies) {
   return { config, store, keeperhub };
 }
 
+function allowedCorsOrigins(): string[] {
+  const origins = ["http://localhost:3000"];
+  const webOrigin = process.env.NEXT_PUBLIC_WEB_ORIGIN?.trim();
+  if (webOrigin && !origins.includes(webOrigin)) {
+    origins.push(webOrigin);
+  }
+  return origins;
+}
+
+function corsMiddleware(req: express.Request, res: express.Response, next: express.NextFunction): void {
+  const origin = req.headers.origin;
+  if (origin && allowedCorsOrigins().includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-payment");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+}
+
 export function createApp(deps: ServerDependencies = {}): Express {
   const { config, store, keeperhub } = createDependencies(deps);
   const app = express();
+  app.use(corsMiddleware);
   app.use(express.json());
 
   app.get("/api/health", (_req, res) => {
