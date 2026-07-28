@@ -4,7 +4,6 @@ import type { Server } from "node:http";
 import { pathToFileURL } from "node:url";
 import { loadConfig } from "./config.js";
 import { AuditStore, seedSubmissionAudits } from "./audit.js";
-import type { AuditRecord } from "./types.js";
 import { runAgentCycle } from "./agent/core.js";
 import { observe } from "./observe.js";
 import { createKeeperHubClientFromEnv } from "./keeperhub/client.js";
