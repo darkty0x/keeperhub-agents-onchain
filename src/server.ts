@@ -33,12 +33,16 @@ export interface ServerDependencies {
 }
 
 function submissionHashesFromEnv(): string[] {
-  return [
+  const raw = [
     process.env.SUBMISSION_TX_HASH,
     ...(process.env.SUBMISSION_TX_HASHES?.split(",") ?? []),
-  ]
-    .map((h) => h?.trim())
-    .filter((h): h is string => Boolean(h) && /^0x[a-fA-F0-9]{64}$/i.test(h));
+  ];
+  const out: string[] = [];
+  for (const value of raw) {
+    const h = value?.trim();
+    if (h && /^0x[a-fA-F0-9]{64}$/i.test(h)) out.push(h);
+  }
+  return out;
 }
 
 function listAuditRecords(store: AuditStore, config: AppConfig, limit: number): AuditRecord[] {

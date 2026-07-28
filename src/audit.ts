@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import type { AuditRecord } from "./types.js";
+import type { AuditRecord, ChainId } from "./types.js";
 
 export class AuditStore {
   constructor(private readonly filePath: string) {
@@ -38,20 +38,26 @@ export class AuditStore {
   }
 }
 
+function hashesFromEnv(): string[] {
+  const raw = [
+    process.env.SUBMISSION_TX_HASH,
+    ...(process.env.SUBMISSION_TX_HASHES?.split(",") ?? []),
+  ];
+  const out: string[] = [];
+  for (const value of raw) {
+    const h = value?.trim();
+    if (h && /^0x[a-fA-F0-9]{64}$/i.test(h)) out.push(h);
+  }
+  return out;
+}
+
 /** Keep known live proof txs visible after ephemeral filesystem restarts. */
 export function seedSubmissionAudits(
   store: AuditStore,
-  opts: { walletAddress: string; chainId: string },
+  opts: { walletAddress: string; chainId: ChainId },
 ): number {
-  const hashes = [
-    process.env.SUBMISSION_TX_HASH,
-    ...(process.env.SUBMISSION_TX_HASHES?.split(",") ?? []),
-  ]
-    .map((h) => h?.trim())
-    .filter((h): h is string => Boolean(h) && /^0x[a-fA-F0-9]{64}$/.test(h));
-
   let seeded = 0;
-  for (const txHash of hashes) {
+  for (const txHash of hashesFromEnv()) {
     if (store.hasTxHash(txHash)) continue;
     const at = new Date().toISOString();
     store.append({
