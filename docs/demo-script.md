@@ -1,26 +1,19 @@
 # KeeperHub Agents Onchain — two-minute demo
 
-This script demonstrates the local flow end to end, then explains the one
-live-execution step that must be recorded with a real `kh_` key. Keep the
-terminal and dashboard visible together.
+Record against the deployed dashboard when possible:
 
-## Before recording
+- Web: https://web-production-a79e1.up.railway.app
+- API: https://api-production-66a0.up.railway.app
 
-Start the API in the repository root:
+For a local dry-run (mock hashes), start:
 
 ```bash
 KEEPERHUB_MOCK=1 X402_DEMO_BYPASS=1 npm run server
+cd apps/web && NEXT_PUBLIC_API_BASE=http://localhost:8787 npm run dev
 ```
 
-Start the dashboard in a second terminal:
-
-```bash
-cd apps/web
-NEXT_PUBLIC_API_BASE=http://localhost:8787 npm run dev
-```
-
-Open `http://localhost:3000`. The local mock is intentional for this
-walkthrough; it does not produce a real transaction hash.
+Prefer a **live** recording for submission (`KEEPERHUB_MOCK` off + real `kh_`
+key). See [`go-live.md`](./go-live.md).
 
 ## Timeline and narration
 
@@ -30,72 +23,48 @@ walkthrough; it does not produce a real transaction hash.
 guardian monitoring, contract-event response, and a paid agent API. All three
 use the same observe, decide, policy, execute, and audit pipeline.”
 
-Point to the dashboard status, configured Sepolia chain, and kill-switch
-indicator.
+Point to **Submission readiness**, the MOCK/LIVE badge, MCP endpoint, and the
+policy gate (kill switch, max amount, cooldown).
 
-### 0:20–0:50 — Run the guardian path
+### 0:20–0:50 — Guardian path
 
-Click **Run now**. Say:
+Click **Run guardian breach**.
 
-“The agent observes the configured wallet, applies the threshold rule, chooses
-an allowlisted action, and shows the resulting decision. Policy runs before
-KeeperHub, so amount limits, recipient allowlists, cooldown, chain allowlists,
-and the kill switch are enforced centrally.”
+“The agent observes the wallet metric, rules pick an allowlisted Aave withdraw
+buffer action, policy runs before KeeperHub, and the execution writes an audit
+row with trigger, decision, policy, and transaction hash.”
 
-Point to the new audit row and its trigger, decision, policy, and outcome.
+Expand **Last cycle breakdown** and the new audit row.
 
-### 0:50–1:10 — Show event mode
+### 0:50–1:10 — Event mode
 
-Run:
-
-```bash
-curl -s -X POST http://localhost:8787/api/events/ingest \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Transfer","txHash":"0xdemo","payload":{"amount":"1"}}'
-```
-
-Refresh the dashboard. Say:
+Click **Ingest demo event**.
 
 “An event becomes an observation and enters the exact same core; event mode
 does not duplicate execution or policy logic.”
 
-### 1:10–1:30 — Show the paid API boundary
+### 1:10–1:30 — Paid API boundary
 
-First show the unpaid challenge:
+Click **Call unpaid (expect 402)** — show the challenge JSON.
 
-```bash
-curl -i -s -X POST http://localhost:8787/api/paid/run
-```
+Then click **Pay demo + run**.
 
-Then show the local demo payment:
+“Without payment, the endpoint returns 402 and does not run. The demo payment
+header is local-only; production verification stays fail-closed until a real
+x402 verifier is configured.”
 
-```bash
-curl -s -X POST http://localhost:8787/api/paid/run \
-  -H 'x-payment: demo' -H 'Content-Type: application/json'
-```
+### 1:30–1:50 — Live KeeperHub proof
 
-Say:
+If recording live: open the audit tx on Sepolia Etherscan.
 
-“Without payment, the endpoint returns 402 and does not run. The `demo`
-header is a local bypass for this recording only; production verification is
-fail-closed until a real x402 verifier is configured.”
+If still on mock: say clearly that mock hashes are wiring-only, then cut to a
+pre-captured live explorer tab for the submission hash from `docs/go-live.md`.
 
-### 1:30–1:50 — Explain live KeeperHub execution
+### 1:50–2:00 — Close
 
-“For a live submission, the mock is removed and `KEEPERHUB_API_KEY` is set to
-the organization’s real `kh_` key. The client calls the authenticated MCP
-tools, polls the execution status, and writes the returned transaction hash
-to the audit record and dashboard.”
-
-Show the relevant README checklist with the transaction hash still marked
-`PLACEHOLDER` if live execution has not yet been completed.
-
-### 1:50–2:00 — Close with safety and submission
-
-“The important safety boundary is the policy gate before every write, plus
-the kill switch and append-only audit trail. The final submission includes the
-repository, this video, and a real Sepolia transaction executed through
-KeeperHub.”
+“Safety is the policy gate before every write, plus kill switch and
+append-only audit. Submission is GitHub, this video, and a real Sepolia
+transaction executed through KeeperHub.”
 
 Do not claim a transaction exists until the live run returns and verifies an
 actual hash on Sepolia Etherscan.

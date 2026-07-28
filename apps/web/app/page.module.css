@@ -114,6 +114,7 @@
 }
 
 .checklist,
+.golive,
 .modes,
 .policy,
 .actions,
@@ -121,6 +122,73 @@
 .audit {
   margin-bottom: 2.25rem;
   animation: rise 0.85s ease both;
+}
+
+.execMeta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 1rem 0 0;
+}
+
+.execMeta div,
+.goList li {
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.execMeta dt {
+  margin: 0 0 0.3rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.execMeta dd {
+  margin: 0;
+  font-size: 0.82rem;
+  word-break: break-all;
+}
+
+.goList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+  counter-reset: golive;
+}
+
+.goList li {
+  counter-increment: golive;
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: 0.75rem;
+  align-items: start;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.goList li::before {
+  content: counter(golive, decimal-leading-zero);
+  color: var(--signal-deep);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.linkBtn {
+  border: 0;
+  padding: 0;
+  margin-left: 0.35rem;
+  background: transparent;
+  color: var(--signal-deep);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .badgeMock,
@@ -466,6 +534,7 @@
   .pipeline,
   .modeGrid,
   .policyGrid,
+  .execMeta,
   .breakdown {
     grid-template-columns: 1fr;
   }

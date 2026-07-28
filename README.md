@@ -26,6 +26,8 @@ hash contains `MOCK`.
 - Project: https://railway.com/project/3e08936e-8114-47f7-8a6d-4df8dd19c4bb
 
 Currently running with `KEEPERHUB_MOCK=1` until a live `kh_` key is configured.
+Full go-live steps: [`docs/go-live.md`](docs/go-live.md). Demo narration:
+[`docs/demo-script.md`](docs/demo-script.md).
 
 ## Architecture
 
@@ -135,23 +137,19 @@ Open `http://localhost:3000`.
 
 ## Aligning the live MCP tool arguments
 
-Live KeeperHub execution was not performed because
-`KEEPERHUB_API_KEY` is unavailable in this environment. Once a real `kh_` key
-exists:
+Follow [`docs/go-live.md`](docs/go-live.md). Short version:
 
-1. Create/sign into KeeperHub, create an organization API key, and fund the
-   configured Sepolia wallet if required.
-2. Query the authenticated MCP endpoint's `tools/list` (or
-   `tools_documentation`) response. Confirm exact tool names and required
-   arguments for `execute_protocol_action`, `execute_transfer`,
-   `execute_check_and_execute`, and `get_direct_execution_status`.
-3. Compare that schema with `HttpKeeperHubClient`: protocol action currently
-   maps `actionType` and `amount`; transfer maps `to`, `amount`, and
-   `tokenAddress`; fallback maps `amount`; status maps `executionId`.
-4. Update only this wire mapping (keep `KeeperHubClient` stable), then run
-   `npm run build` and tests before one small allowlisted Sepolia action.
-5. Poll until a transaction hash is returned, verify it on Sepolia Etherscan,
-   and record that exact hash below and in the video notes.
+```bash
+export KEEPERHUB_API_KEY=kh_...
+unset KEEPERHUB_MOCK
+npm run cli -- mcp-probe
+```
+
+Compare the printed schemas with `HttpKeeperHubClient`. Protocol actions send
+`network`, `actionType`, and `amount`; transfers send `network`, `amount`,
+`to` / `recipientAddress` (and optional `tokenAddress`); status sends
+`executionId`. Update only the wire mapping, keep `KeeperHubClient` stable,
+then run one small allowlisted Sepolia action and record the hash below.
 
 ## Submission checklist
 
@@ -162,8 +160,8 @@ exists:
 - [ ] Etherscan link: `PLACEHOLDER`
 - [x] Shared core with guardian, event, and paid API modes
 - [x] Policy gate, kill switch, cooldown, allowlists, and audit trail
-- [x] CLI and dashboard demo path
-- [ ] Live `tools/list` argument alignment and one successful Sepolia action
+- [x] CLI and dashboard demo path (all modes + cycle breakdown)
+- [ ] Live `mcp-probe` argument alignment and one successful Sepolia action
 
 ## Verification
 

@@ -1,3 +1,5 @@
+import type { ChainId } from "../types.js";
+import { networkIdForChain } from "./network.js";
 import type { ExecuteRequest, ExecuteHandle, ExecutionStatus, KeeperHubClient } from "./types.js";
 
 type McpContentBlock = { type?: string; text?: string };
@@ -9,6 +11,7 @@ const TOOL_NAMES = {
   protocolAction: "execute_protocol_action",
   checkAndExecute: "execute_check_and_execute",
   status: "get_direct_execution_status",
+  toolsDocumentation: "tools_documentation",
 } as const;
 
 function unwrapMcpToolResult(result: unknown): unknown {
@@ -44,6 +47,11 @@ function unwrapMcpToolResult(result: unknown): unknown {
   return result;
 }
 
+function executionIdFrom(result: unknown): string {
+  const r = result as { executionId?: string; id?: string } | null;
+  return r?.executionId ?? r?.id ?? "unknown";
+}
+
 export class HttpKeeperHubClient implements KeeperHubClient {
   constructor(
     private readonly apiKey: string,
@@ -51,15 +59,12 @@ export class HttpKeeperHubClient implements KeeperHubClient {
   ) {}
 
   /**
-   * Sends one JSON-RPC MCP tools/call request.
+   * Sends one JSON-RPC MCP request (tools/call or tools/list).
    *
-   * Before the first live run, compare the arguments below with the
-   * authenticated server's `tools/list` (or `tools_documentation`) response.
-   * Do not guess a schema: KeeperHub may rename fields or require additional
-   * chain/wallet parameters. The public KeeperHubClient interface is
-   * intentionally independent of those wire details.
+   * Before the first live run, prefer `npm run cli -- mcp-probe` so argument
+   * names match the authenticated server's `tools/list` / `tools_documentation`.
    */
-  private async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+  private async rpc(method: string, params: Record<string, unknown>): Promise<unknown> {
     const res = await fetch(this.baseUrl, {
       method: "POST",
       headers: {
@@ -70,8 +75,8 @@ export class HttpKeeperHubClient implements KeeperHubClient {
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: Date.now(),
-        method: "tools/call",
-        params: { name, arguments: args },
+        method,
+        params,
       }),
     });
     if (!res.ok) {
@@ -79,33 +84,64 @@ export class HttpKeeperHubClient implements KeeperHubClient {
     }
     const body = (await res.json()) as { result?: unknown; error?: { message: string } };
     if (body.error) throw new Error(body.error.message);
-    return unwrapMcpToolResult(body.result);
+    return body.result;
+  }
+
+  private async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+    return unwrapMcpToolResult(await this.rpc("tools/call", { name, arguments: args }));
+  }
+
+  /** List tools + schemas from the live MCP server (auth required). */
+  async listTools(): Promise<unknown> {
+    return this.rpc("tools/list", {});
+  }
+
+  async toolsDocumentation(): Promise<unknown> {
+    return this.callTool(TOOL_NAMES.toolsDocumentation, {});
+  }
+
+  private transferArgs(req: ExecuteRequest): Record<string, unknown> {
+    const network = networkIdForChain(req.chainId);
+    // Wire mapping mirrors KeeperHub web3 transfer fields + direct-tool aliases.
+    // Confirm with mcp-probe before treating as final for a new API revision.
+    const args: Record<string, unknown> = {
+      network,
+      amount: req.amountWei,
+      to: req.recipient,
+      recipientAddress: req.recipient,
+    };
+    if (req.tokenAddress) {
+      args.tokenAddress = req.tokenAddress;
+    }
+    return args;
+  }
+
+  private protocolArgs(req: ExecuteRequest): Record<string, unknown> {
+    return {
+      network: networkIdForChain(req.chainId),
+      actionType: req.protocolActionType,
+      amount: req.amountWei,
+    };
   }
 
   async execute(req: ExecuteRequest): Promise<ExecuteHandle> {
     if (req.kind === "noop") return { executionId: "noop" };
 
     if (req.kind === "transfer") {
-      const result = (await this.callTool(TOOL_NAMES.transfer, {
-        to: req.recipient,
-        amount: req.amountWei,
-        tokenAddress: req.tokenAddress,
-      })) as { executionId?: string; id?: string };
-      return { executionId: result.executionId ?? result.id ?? "unknown" };
+      const result = await this.callTool(TOOL_NAMES.transfer, this.transferArgs(req));
+      return { executionId: executionIdFrom(result) };
     }
 
     if (req.kind === "protocol_action") {
-      const result = (await this.callTool(TOOL_NAMES.protocolAction, {
-        actionType: req.protocolActionType,
-        amount: req.amountWei,
-      })) as { executionId?: string; id?: string };
-      return { executionId: result.executionId ?? result.id ?? "unknown" };
+      const result = await this.callTool(TOOL_NAMES.protocolAction, this.protocolArgs(req));
+      return { executionId: executionIdFrom(result) };
     }
 
-    const result = (await this.callTool(TOOL_NAMES.checkAndExecute, {
+    const result = await this.callTool(TOOL_NAMES.checkAndExecute, {
+      network: networkIdForChain(req.chainId),
       amount: req.amountWei,
-    })) as { executionId?: string; id?: string };
-    return { executionId: result.executionId ?? result.id ?? "unknown" };
+    });
+    return { executionId: executionIdFrom(result) };
   }
 
   async getStatus(executionId: string): Promise<ExecutionStatus> {
@@ -160,4 +196,37 @@ export function createKeeperHubClientFromEnv(
     throw new Error(`${apiKeyEnv} is required for live execution`);
   }
   return new HttpKeeperHubClient(key);
+}
+
+export function createHttpKeeperHubClientFromEnv(
+  apiKeyEnv = "KEEPERHUB_API_KEY",
+): HttpKeeperHubClient {
+  const key = process.env[apiKeyEnv];
+  if (!key) {
+    throw new Error(`${apiKeyEnv} is required for live MCP probe`);
+  }
+  return new HttpKeeperHubClient(key);
+}
+
+export function summarizeToolsForProbe(toolsList: unknown, chainId: ChainId = "sepolia"): {
+  network: string;
+  toolNames: string[];
+  focus: Record<string, unknown>;
+} {
+  const tools =
+    (toolsList as { tools?: { name?: string; inputSchema?: unknown }[] })?.tools ??
+    (Array.isArray(toolsList) ? (toolsList as { name?: string; inputSchema?: unknown }[]) : []);
+  const names = tools.map((t) => t.name).filter((n): n is string => Boolean(n));
+  const focusNames = [
+    TOOL_NAMES.transfer,
+    TOOL_NAMES.protocolAction,
+    TOOL_NAMES.checkAndExecute,
+    TOOL_NAMES.status,
+  ];
+  const focus: Record<string, unknown> = {};
+  for (const name of focusNames) {
+    const tool = tools.find((t) => t.name === name);
+    focus[name] = tool?.inputSchema ?? (names.includes(name) ? "present (no schema)" : "MISSING");
+  }
+  return { network: networkIdForChain(chainId), toolNames: names, focus };
 }

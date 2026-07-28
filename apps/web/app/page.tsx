@@ -52,7 +52,19 @@ type AuditRecord = {
 type DemoStatus = {
   product?: { name: string; tagline: string; hackathon: string; docs: string };
   modes?: Mode[];
-  execution?: { mock: boolean; keeperhubMcp: string; chainId: string };
+  execution?: {
+    mock: boolean;
+    keeperhubMcp: string;
+    chainId: string;
+    networkId?: string;
+  };
+  deploy?: {
+    api?: string | null;
+    web?: string | null;
+    hackathon?: string;
+    demoScript?: string;
+    goLive?: string;
+  };
   config?: {
     chainId: string;
     walletAddress: string;
@@ -75,6 +87,7 @@ type DemoStatus = {
   observation?: AuditRecord["observation"] & { at?: string; chainId?: string };
   lastSuccessAt?: string | null;
   lastRun?: AuditRecord | null;
+  goLive?: { blockedOn: string[] };
   submission?: {
     liveTxReady: boolean;
     demoVideoReady: boolean;
@@ -206,6 +219,48 @@ export default function Home() {
             ))}
             {loading && <li className={styles.checkTodo}>Loading checklist…</li>}
           </ul>
+          <dl className={styles.execMeta}>
+            <div>
+              <dt>MCP</dt>
+              <dd>{status?.execution?.keeperhubMcp ?? "https://app.keeperhub.com/mcp"}</dd>
+            </div>
+            <div>
+              <dt>Chain</dt>
+              <dd>
+                {status?.execution?.chainId ?? "sepolia"}
+                {status?.execution?.networkId ? ` · ${status.execution.networkId}` : ""}
+              </dd>
+            </div>
+            <div>
+              <dt>Last success</dt>
+              <dd>{formatDate(status?.lastSuccessAt)}</dd>
+            </div>
+          </dl>
+          {error && loading === false && status === null && (
+            <p className={styles.error}>
+              {error}{" "}
+              <button type="button" className={styles.linkBtn} onClick={() => void refresh()}>
+                Retry
+              </button>
+            </p>
+          )}
+        </section>
+
+        <section className={styles.golive} aria-labelledby="golive-heading">
+          <div className={styles.sectionHead}>
+            <h2 id="golive-heading">Go live for judging</h2>
+            <p>Mock proves the pipeline; judges need a real KeeperHub Sepolia tx + video.</p>
+          </div>
+          <ol className={styles.goList}>
+            {(status?.goLive?.blockedOn ?? [
+              "Create a KeeperHub org API key (kh_…)",
+              "Fund / connect a Sepolia wallet in KeeperHub",
+              "Set KEEPERHUB_API_KEY and disable KEEPERHUB_MOCK",
+              "Probe MCP schemas, run one mode, paste the tx hash into README",
+            ]).map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
         </section>
 
         <section className={styles.pipeline} aria-label="Pipeline">

@@ -7,6 +7,7 @@ import { AuditStore } from "./audit.js";
 import { runAgentCycle } from "./agent/core.js";
 import { observe } from "./observe.js";
 import { createKeeperHubClientFromEnv } from "./keeperhub/client.js";
+import { networkIdForChain } from "./keeperhub/network.js";
 import { MockKeeperHubClient } from "./keeperhub/mock.js";
 import { startGuardian } from "./modes/guardian.js";
 import { handleChainEvent } from "./modes/events.js";
@@ -146,14 +147,37 @@ export function createApp(deps: ServerDependencies = {}): Express {
         ],
         execution: {
           mock,
-          keeperhubMcp: "https://app.keeperhub.com/mcp",
+          keeperhubMcp: process.env.KEEPERHUB_MCP_URL ?? "https://app.keeperhub.com/mcp",
           chainId: config.chainId,
+          networkId: networkIdForChain(config.chainId),
+        },
+        deploy: {
+          api: process.env.PUBLIC_API_URL ?? null,
+          web: process.env.PUBLIC_WEB_URL ?? "https://web-production-a79e1.up.railway.app",
+          hackathon: "https://dorahacks.io/hackathon/agents-onchain",
+          demoScript: "docs/demo-script.md",
+          goLive: "docs/go-live.md",
         },
         config: publicConfig(config),
         observation,
         lastSuccessAt: store.lastSuccessAt(),
         lastRun,
         recent,
+        goLive: {
+          blockedOn: mock
+            ? [
+                "Create a KeeperHub org API key (kh_…) at app.keeperhub.com → Settings → API Keys",
+                "Configure a funded Sepolia wallet integration in KeeperHub",
+                "Set KEEPERHUB_API_KEY and unset KEEPERHUB_MOCK on the API service",
+                "Run: npm run cli -- mcp-probe  (align tool args if schemas differ)",
+                "Run: npm run cli -- run  (or dashboard Guardian breach) and record the real tx hash",
+              ]
+            : [
+                "Live key is configured — run a mode and verify the hash on Sepolia Etherscan",
+                "Paste the tx hash into README submission checklist",
+                "Record the ~2 minute demo video (docs/demo-script.md)",
+              ],
+        },
         submission: {
           githubReady: true,
           liveTxReady: hasLiveTx(store),
