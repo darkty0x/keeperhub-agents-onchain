@@ -161,9 +161,9 @@ then run one small allowlisted Sepolia action and record the hash below.
 
 - [ ] Public GitHub repository link: `PLACEHOLDER`
 - [ ] Approximately two-minute demo video link: `PLACEHOLDER`
-- [ ] Real KeeperHub Sepolia transaction: `PLACEHOLDER` (replace with the
+- [x] Real KeeperHub Sepolia transaction: `0xa1f45ff4f674958b51030f3b5ac30e7a2cd94aeb0167ab3aad207774241f41b3`
       exact `0x...` hash only after live execution)
-- [ ] Etherscan link: `PLACEHOLDER`
+- [x] Etherscan link: https://sepolia.etherscan.io/tx/0xa1f45ff4f674958b51030f3b5ac30e7a2cd94aeb0167ab3aad207774241f41b3
 - [x] Shared core with guardian, event, and paid API modes
 - [x] Policy gate, kill switch, cooldown, allowlists, and audit trail
 - [x] CLI and dashboard demo path (all modes + cycle breakdown)
