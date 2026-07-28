@@ -37,8 +37,19 @@ describe("loadConfig", () => {
   });
 
   it("rejects empty recipient allowlist when transfers exist", () => {
-    expect(() =>
-      loadConfig(path.join(process.cwd(), "tests/fixtures/bad-config.json")),
-    ).toThrow(/recipientAllowlist/i);
+    const prevR = process.env.RECIPIENT_ADDRESS;
+    const prevW = process.env.WALLET_ADDRESS;
+    delete process.env.RECIPIENT_ADDRESS;
+    delete process.env.WALLET_ADDRESS;
+    try {
+      expect(() =>
+        loadConfig(path.join(process.cwd(), "tests/fixtures/bad-config.json")),
+      ).toThrow(/recipientAllowlist/i);
+    } finally {
+      if (prevR === undefined) delete process.env.RECIPIENT_ADDRESS;
+      else process.env.RECIPIENT_ADDRESS = prevR;
+      if (prevW === undefined) delete process.env.WALLET_ADDRESS;
+      else process.env.WALLET_ADDRESS = prevW;
+    }
   });
 });

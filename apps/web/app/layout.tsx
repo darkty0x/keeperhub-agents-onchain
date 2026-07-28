@@ -17,7 +17,7 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "KeeperHub · Agents Onchain",
   description:
-    "Demo dashboard for an AI agent that observes, decides, and executes real onchain actions through KeeperHub.",
+    "AI agent that observes, decides, and executes onchain actions through KeeperHub for the Agents Onchain hackathon.",
 };
 
 export default function RootLayout({

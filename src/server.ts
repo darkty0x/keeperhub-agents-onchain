@@ -207,22 +207,22 @@ export function createApp(deps: ServerDependencies = {}): Express {
         goLive: {
           blockedOn: mock
             ? [
-                "NOT SUBMISSION-READY: mock mode cannot be judged — DoraHacks requires a real KeeperHub tx",
-                "Create a KeeperHub org API key (kh_…) at app.keeperhub.com → Settings → API Keys",
-                "Configure + fund a Sepolia wallet integration in KeeperHub (this signs txs — not MetaMask in the UI)",
-                "Set WALLET_ADDRESS + RECIPIENT_ADDRESS (real addresses), KEEPERHUB_API_KEY, DELETE KEEPERHUB_MOCK",
-                "Set REQUIRE_LIVE_KEEPERHUB=1, run mcp-probe, Guardian breach, verify on Sepolia Etherscan",
+                "NOT READY: mock mode cannot be judged — DoraHacks requires a real KeeperHub tx",
+                "Set KEEPERHUB_API_KEY (kh_…) and delete KEEPERHUB_MOCK",
+                "Fund Sepolia on the KeeperHub org wallet that signs txs",
+                "Set WALLET_ADDRESS + RECIPIENT_ADDRESS to that wallet (or an allowlisted recipient)",
+                "Set REQUIRE_LIVE_KEEPERHUB=1, run mcp-probe / live-submit, verify on Sepolia Etherscan",
               ]
             : liveHash
               ? [
                   `Live KeeperHub tx recorded: ${liveHash}`,
-                  "Record the ~2 minute demo video with the explorer link visible",
+                  "Record the ~2 minute video with the explorer link visible",
                   "Publish GitHub + submit BUIDL on DoraHacks",
                 ]
               : [
-                  "Live key is configured — run Guardian breach (prefers tiny transfer) and wait for txHash",
-                  "Verify on Sepolia Etherscan, then set SUBMISSION_TX_HASH / paste into README",
-                  "Record demo video (docs/demo-script.md)",
+                  "Live key is configured — run Guardian breach (tiny transfer) and wait for txHash",
+                  "Verify on Sepolia Etherscan, then set SUBMISSION_TX_HASH / update README",
+                  "Record video (docs/demo-script.md)",
                 ],
         },
         submission: {
@@ -318,7 +318,6 @@ export function createApp(deps: ServerDependencies = {}): Express {
           payload: req.body?.payload ?? {
             contract: config.events.contractAddress,
             signature: config.events.eventSignature,
-            demo: true,
           },
         },
         runCycle: (observation) =>

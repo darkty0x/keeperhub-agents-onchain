@@ -4,8 +4,6 @@ import type { ExecuteRequest, ExecuteHandle, ExecutionStatus, KeeperHubClient } 
 
 type McpContentBlock = { type?: string; text?: string };
 
-// KeeperHub exposes these names through its remote MCP server. Keep the
-// application-facing KeeperHubClient stable while live tool schemas evolve.
 const TOOL_NAMES = {
   transfer: "execute_transfer",
   protocolAction: "execute_protocol_action",
@@ -13,6 +11,16 @@ const TOOL_NAMES = {
   status: "get_direct_execution_status",
   toolsDocumentation: "tools_documentation",
 } as const;
+
+/** Convert wei integer string to human-readable ETH amount for KeeperHub transfer.amount. */
+export function weiToHumanAmount(amountWei: string): string {
+  const wei = BigInt(amountWei);
+  const whole = wei / 10n ** 18n;
+  const frac = wei % 10n ** 18n;
+  if (frac === 0n) return whole.toString();
+  const fracStr = frac.toString().padStart(18, "0").replace(/0+$/, "");
+  return `${whole}.${fracStr}`;
+}
 
 function unwrapMcpToolResult(result: unknown): unknown {
   if (result === null || typeof result !== "object") {
@@ -48,30 +56,94 @@ function unwrapMcpToolResult(result: unknown): unknown {
 }
 
 function executionIdFrom(result: unknown): string {
-  const r = result as { executionId?: string; id?: string } | null;
-  return r?.executionId ?? r?.id ?? "unknown";
+  const r = result as { executionId?: string; execution_id?: string; id?: string } | null;
+  return r?.executionId ?? r?.execution_id ?? r?.id ?? "unknown";
 }
 
 export class HttpKeeperHubClient implements KeeperHubClient {
+  private sessionId: string | null = null;
+  private initPromise: Promise<void> | null = null;
+
   constructor(
     private readonly apiKey: string,
     private readonly baseUrl = process.env.KEEPERHUB_MCP_URL ?? "https://app.keeperhub.com/mcp",
   ) {}
 
+  private headers(extra?: Record<string, string>): Record<string, string> {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.apiKey}`,
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+      ...extra,
+    };
+    if (this.sessionId) headers["Mcp-Session-Id"] = this.sessionId;
+    return headers;
+  }
+
   /**
-   * Sends one JSON-RPC MCP request (tools/call or tools/list).
-   *
-   * Before the first live run, prefer `npm run cli -- mcp-probe` so argument
-   * names match the authenticated server's `tools/list` / `tools_documentation`.
+   * Streamable HTTP MCP requires initialize → notifications/initialized
+   * before tools/list or tools/call, with Mcp-Session-Id on later requests.
    */
+  private async ensureSession(): Promise<void> {
+    if (this.sessionId) return;
+    if (this.initPromise) {
+      await this.initPromise;
+      return;
+    }
+    this.initPromise = (async () => {
+      const initRes = await fetch(this.baseUrl, {
+        method: "POST",
+        headers: this.headers(),
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: Date.now(),
+          method: "initialize",
+          params: {
+            protocolVersion: "2024-11-05",
+            capabilities: {},
+            clientInfo: { name: "keeperhub-agents-onchain", version: "1.0.0" },
+          },
+        }),
+      });
+      if (!initRes.ok) {
+        throw new Error(`KeeperHub MCP initialize HTTP ${initRes.status}: ${await initRes.text()}`);
+      }
+      const sid = initRes.headers.get("mcp-session-id");
+      if (!sid) {
+        throw new Error("KeeperHub MCP initialize did not return mcp-session-id");
+      }
+      this.sessionId = sid;
+      await initRes.json().catch(() => undefined);
+
+      const notif = await fetch(this.baseUrl, {
+        method: "POST",
+        headers: this.headers(),
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "notifications/initialized",
+          params: {},
+        }),
+      });
+      if (!notif.ok && notif.status !== 202) {
+        throw new Error(
+          `KeeperHub MCP notifications/initialized HTTP ${notif.status}: ${await notif.text()}`,
+        );
+      }
+    })();
+    try {
+      await this.initPromise;
+    } catch (err) {
+      this.sessionId = null;
+      this.initPromise = null;
+      throw err;
+    }
+  }
+
   private async rpc(method: string, params: Record<string, unknown>): Promise<unknown> {
+    await this.ensureSession();
     const res = await fetch(this.baseUrl, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-        Accept: "application/json, text/event-stream",
-      },
+      headers: this.headers(),
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: Date.now(),
@@ -80,8 +152,15 @@ export class HttpKeeperHubClient implements KeeperHubClient {
       }),
     });
     if (!res.ok) {
-      throw new Error(`KeeperHub MCP HTTP ${res.status}: ${await res.text()}`);
+      const text = await res.text();
+      if (/session_not_initialized|Session not initialized/i.test(text)) {
+        this.sessionId = null;
+        this.initPromise = null;
+      }
+      throw new Error(`KeeperHub MCP HTTP ${res.status}: ${text}`);
     }
+    const nextSid = res.headers.get("mcp-session-id");
+    if (nextSid) this.sessionId = nextSid;
     const body = (await res.json()) as { result?: unknown; error?: { message: string } };
     if (body.error) throw new Error(body.error.message);
     return body.result;
@@ -91,7 +170,6 @@ export class HttpKeeperHubClient implements KeeperHubClient {
     return unwrapMcpToolResult(await this.rpc("tools/call", { name, arguments: args }));
   }
 
-  /** List tools + schemas from the live MCP server (auth required). */
   async listTools(): Promise<unknown> {
     return this.rpc("tools/list", {});
   }
@@ -101,26 +179,23 @@ export class HttpKeeperHubClient implements KeeperHubClient {
   }
 
   private transferArgs(req: ExecuteRequest): Record<string, unknown> {
-    const network = networkIdForChain(req.chainId);
-    // Wire mapping mirrors KeeperHub web3 transfer fields + direct-tool aliases.
-    // Confirm with mcp-probe before treating as final for a new API revision.
     const args: Record<string, unknown> = {
-      network,
-      amount: req.amountWei,
-      to: req.recipient,
-      recipientAddress: req.recipient,
+      chain_id: networkIdForChain(req.chainId),
+      to_address: req.recipient,
+      amount: weiToHumanAmount(req.amountWei),
+      idempotency_key: `agents-onchain-${req.actionId}-${req.amountWei}`,
     };
-    if (req.tokenAddress) {
-      args.tokenAddress = req.tokenAddress;
-    }
+    if (req.tokenAddress) args.token_address = req.tokenAddress;
     return args;
   }
 
   private protocolArgs(req: ExecuteRequest): Record<string, unknown> {
     return {
-      network: networkIdForChain(req.chainId),
       actionType: req.protocolActionType,
-      amount: req.amountWei,
+      params: {
+        network: networkIdForChain(req.chainId),
+        amount: weiToHumanAmount(req.amountWei),
+      },
     };
   }
 
@@ -138,8 +213,8 @@ export class HttpKeeperHubClient implements KeeperHubClient {
     }
 
     const result = await this.callTool(TOOL_NAMES.checkAndExecute, {
-      network: networkIdForChain(req.chainId),
-      amount: req.amountWei,
+      chain_id: networkIdForChain(req.chainId),
+      amount: weiToHumanAmount(req.amountWei),
     });
     return { executionId: executionIdFrom(result) };
   }
@@ -147,12 +222,12 @@ export class HttpKeeperHubClient implements KeeperHubClient {
   async getStatus(executionId: string): Promise<ExecutionStatus> {
     if (executionId === "noop") return { executionId, status: "success" };
     const result = (await this.callTool(TOOL_NAMES.status, {
-      executionId,
+      execution_id: executionId,
     })) as {
       status?: string;
       txHash?: string;
-      transactionHash?: string;
-      error?: string;
+      transactionHash?: string | null;
+      error?: string | null;
     };
     const raw = (result.status ?? "pending").toLowerCase();
     const status =
@@ -162,9 +237,9 @@ export class HttpKeeperHubClient implements KeeperHubClient {
           ? "failed"
           : "pending";
     const statusOut: ExecutionStatus = { executionId, status };
-    const txHash = result.txHash ?? result.transactionHash;
-    if (txHash !== undefined) statusOut.txHash = txHash;
-    if (result.error !== undefined) statusOut.error = result.error;
+    const txHash = result.txHash ?? result.transactionHash ?? undefined;
+    if (typeof txHash === "string" && txHash.length > 0) statusOut.txHash = txHash;
+    if (typeof result.error === "string" && result.error.length > 0) statusOut.error = result.error;
     return statusOut;
   }
 

@@ -1,11 +1,11 @@
 {
   "chainId": "sepolia",
-  "walletAddress": "0x0000000000000000000000000000000000000001",
+  "walletAddress": "0xFFaccF66c56C9236B84dbF02BB8CBa76734b702d",
   "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com",
   "keeperhubApiKeyEnv": "KEEPERHUB_API_KEY",
   "killSwitch": false,
   "maxAmountWei": "10000000000000000",
-  "recipientAllowlist": ["0x0000000000000000000000000000000000000002"],
+  "recipientAllowlist": ["0xFFaccF66c56C9236B84dbF02BB8CBa76734b702d"],
   "chainAllowlist": ["sepolia"],
   "cooldownSeconds": 60,
   "preferTransferFirst": true,
@@ -16,16 +16,16 @@
     "thresholdDirection": "below"
   },
   "events": {
-    "contractAddress": "0x0000000000000000000000000000000000000003",
+    "contractAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "eventSignature": "Transfer(address,address,uint256)"
   },
   "allowedActions": [
     {
       "id": "transfer-topup",
       "kind": "transfer",
-      "description": "Transfer tiny native ETH to allowlisted recipient (first live proof)",
+      "description": "Transfer tiny native ETH via KeeperHub (Sepolia proof)",
       "maxAmountWei": "1000000000000000",
-      "recipient": "0x0000000000000000000000000000000000000002"
+      "recipient": "0xFFaccF66c56C9236B84dbF02BB8CBa76734b702d"
     },
     {
       "id": "aave-withdraw-buffer",
@@ -42,7 +42,7 @@
   ],
   "x402": {
     "priceUsdc": "0.01",
-    "payTo": "0x0000000000000000000000000000000000000004"
+    "payTo": "0xFFaccF66c56C9236B84dbF02BB8CBa76734b702d"
   },
   "llm": {
     "enabled": false,

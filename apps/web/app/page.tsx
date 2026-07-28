@@ -176,7 +176,7 @@ export default function Home() {
       const e = err as Error & { status?: number; body?: unknown };
       if (e.status === 402) {
         setPaymentChallenge(e.body);
-        setError("x402 payment required — unpaid requests never execute. Retry with demo payment.");
+        setError("x402 payment required — unpaid requests never execute.");
       } else {
         setError(e.message || "Run failed.");
       }
@@ -196,25 +196,30 @@ export default function Home() {
           <p className={styles.brandMark}>
             Keeper<span>Hub</span>
           </p>
-          <p className={styles.brandMeta}>Agents Onchain · submission demo</p>
+          <p className={styles.brandMeta}>Agents Onchain · hackathon build</p>
         </header>
 
         <section className={styles.hero}>
           <h1>{status?.product?.tagline ?? "AI agents that finish the last mile onchain."}</h1>
           <p className={styles.lede}>
             One execution core, three triggers (guardian, event, paid x402). Observe → decide →
-            policy → KeeperHub MCP → audit. DoraHacks judges require a <strong>real</strong> Sepolia
-            transaction through KeeperHub — mock hashes are rejected for submission.
+            policy → KeeperHub MCP → audit. Onchain writes are signed by the KeeperHub org wallet —
+            this UI watches an address over RPC; it does not connect MetaMask.
           </p>
           {mock && (
             <p className={styles.notReady} role="status">
-              NOT READY FOR SUBMISSION — running MOCK KeeperHub. Set a real <code>kh_</code> API key
-              and disable mock before recording the demo or filing the BUIDL.
+              NOT READY — KeeperHub is still in mock mode. Live <code>kh_</code> execution is
+              required for the BUIDL.
             </p>
           )}
           {!mock && status?.submission?.ready && (
             <p className={styles.readyBanner} role="status">
-              Live KeeperHub tx recorded — still need demo video + public GitHub for full submission.
+              Live KeeperHub Sepolia tx recorded. Remaining: video + public GitHub for DoraHacks.
+            </p>
+          )}
+          {!mock && !status?.submission?.ready && (
+            <p className={styles.readyBanner} role="status">
+              Live KeeperHub connected — run Guardian breach to land the first Sepolia transaction.
             </p>
           )}
           <div className={styles.heroLinks}>
@@ -311,16 +316,16 @@ export default function Home() {
             <h2 id="golive-heading">Go live for judging</h2>
             <p>
               {mock
-                ? "Mock is local wiring only. Do not submit until this badge is LIVE and a real tx exists."
-                : "Live MCP is on — run a mode, open the explorer link, then record the video."}
+                ? "Mock mode blocks judging. Flip to live KeeperHub before filing the BUIDL."
+                : "Live MCP is on — run Guardian, open the explorer link, then record the video."}
             </p>
           </div>
           <ol className={styles.goList}>
             {(status?.goLive?.blockedOn ?? [
               "Create a KeeperHub org API key (kh_…)",
-              "Fund / connect a Sepolia wallet in KeeperHub",
+              "Fund Sepolia on the KeeperHub org wallet",
               "Set KEEPERHUB_API_KEY and disable KEEPERHUB_MOCK",
-              "Probe MCP schemas, run one mode, paste the tx hash into README",
+              "Run Guardian breach, paste the tx hash into README",
             ]).map((step) => (
               <li key={step}>{step}</li>
             ))}
@@ -364,7 +369,7 @@ export default function Home() {
             <h2 id="modes-heading">Three modes · same core</h2>
             <p>
               Primary path: Guardian breach (tiny transfer when live). Manual observe often noops
-              when the watched address is healthy — that is expected, not a wallet bug.
+              when the watched address is healthy — that is expected.
             </p>
           </div>
           <div className={styles.modeGrid}>
@@ -372,8 +377,8 @@ export default function Home() {
               <p className={styles.modePersona}>Solo DeFi user</p>
               <h3>Guardian</h3>
               <p>
-                Watches the RPC address every {cfg?.guardian.intervalSeconds ?? 30}s. Demo run
-                injects a threshold breach so policy can allow a write through KeeperHub.
+                Watches the RPC address every {cfg?.guardian.intervalSeconds ?? 30}s. Force-breach
+                injects a threshold breach so policy can allow a KeeperHub write.
               </p>
               <ul>
                 <li>
@@ -412,13 +417,12 @@ export default function Home() {
                       payload: {
                         contract: cfg?.events.contractAddress,
                         signature: cfg?.events.eventSignature,
-                        demo: true,
                       },
                     }),
                   )
                 }
               >
-                {busy === "event" ? "Running…" : "Ingest demo event"}
+                {busy === "event" ? "Running…" : "Ingest event"}
               </button>
             </article>
 
@@ -427,7 +431,7 @@ export default function Home() {
               <h3>Paid x402 API</h3>
               <p>
                 Unpaid calls get HTTP 402 + challenge ({cfg?.x402.priceUsdc ?? "0.01"} USDC to{" "}
-                {shortAddr(cfg?.x402.payTo)}). Demo bypass uses header <code>x-payment: demo</code>.
+                {shortAddr(cfg?.x402.payTo)}). Local bypass header: <code>x-payment: demo</code>.
               </p>
               <div className={styles.modeActions}>
                 <button
@@ -446,7 +450,7 @@ export default function Home() {
                     )
                   }
                 >
-                  {busy === "x402-paid" ? "Running…" : "Pay demo + run"}
+                  {busy === "x402-paid" ? "Running…" : "Paid run"}
                 </button>
               </div>
             </article>
