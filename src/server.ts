@@ -3,7 +3,7 @@ import express, { type Express } from "express";
 import type { Server } from "node:http";
 import { pathToFileURL } from "node:url";
 import { loadConfig } from "./config.js";
-import { AuditStore } from "./audit.js";
+import { AuditStore, seedSubmissionAudits } from "./audit.js";
 import { runAgentCycle } from "./agent/core.js";
 import { observe } from "./observe.js";
 import { createKeeperHubClientFromEnv } from "./keeperhub/client.js";
@@ -35,6 +35,12 @@ export interface ServerDependencies {
 function createDependencies(deps: ServerDependencies) {
   const config = deps.config ?? loadConfig();
   const store = deps.store ?? new AuditStore(process.env.AUDIT_PATH ?? "data/audit.jsonl");
+  if (!deps.store) {
+    seedSubmissionAudits(store, {
+      walletAddress: config.walletAddress,
+      chainId: config.chainId,
+    });
+  }
   const apiKeyEnv = config.keeperhubApiKeyEnv;
   const apiKey = process.env[apiKeyEnv];
 

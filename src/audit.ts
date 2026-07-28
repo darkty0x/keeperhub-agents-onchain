@@ -1,11 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import type { AuditRecord } from "./types.js";
 
 export class AuditStore {
   constructor(private readonly filePath: string) {
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    if (!fs.existsSync(filePath)) fs.writeFileSync(filePath, "");
+    if (!fs.existsSync(this.filePath)) fs.writeFileSync(this.filePath, "");
   }
 
   append(record: AuditRecord): void {
@@ -30,4 +31,49 @@ export class AuditStore {
     );
     return success?.at ?? null;
   }
+
+  hasTxHash(txHash: string): boolean {
+    const needle = txHash.toLowerCase();
+    return this.list(10_000).some((r) => r.txHash?.toLowerCase() === needle);
+  }
+}
+
+/** Keep known live proof txs visible after ephemeral filesystem restarts. */
+export function seedSubmissionAudits(
+  store: AuditStore,
+  opts: { walletAddress: string; chainId: string },
+): number {
+  const hashes = [
+    process.env.SUBMISSION_TX_HASH,
+    ...(process.env.SUBMISSION_TX_HASHES?.split(",") ?? []),
+  ]
+    .map((h) => h?.trim())
+    .filter((h): h is string => Boolean(h) && /^0x[a-fA-F0-9]{64}$/.test(h));
+
+  let seeded = 0;
+  for (const txHash of hashes) {
+    if (store.hasTxHash(txHash)) continue;
+    const at = new Date().toISOString();
+    store.append({
+      id: randomUUID(),
+      at,
+      trigger: "guardian",
+      observation: {
+        at,
+        chainId: opts.chainId,
+        walletAddress: opts.walletAddress,
+        nativeBalanceWei: "0",
+      },
+      decision: {
+        actionId: "transfer-topup",
+        rationale: "Seeded from SUBMISSION_TX_HASH for reviewer history",
+        fromRules: true,
+      },
+      policy: { allowed: true, reasons: [] },
+      outcome: "success",
+      txHash,
+    });
+    seeded += 1;
+  }
+  return seeded;
 }

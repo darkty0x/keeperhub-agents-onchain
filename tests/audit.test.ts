@@ -55,4 +55,19 @@ describe("AuditStore", () => {
     );
     expect(store.lastSuccessAt()).toBe("2026-07-28T03:00:00.000Z");
   });
+
+  it("seeds submission hashes once", async () => {
+    const { seedSubmissionAudits } = await import("../src/audit.js");
+    const hash =
+      "0xa1f45ff4f674958b51030f3b5ac30e7a2cd94aeb0167ab3aad207774241f41b3";
+    process.env.SUBMISSION_TX_HASH = hash;
+    delete process.env.SUBMISSION_TX_HASHES;
+    expect(
+      seedSubmissionAudits(store, { walletAddress: "0x1", chainId: "sepolia" }),
+    ).toBe(1);
+    expect(
+      seedSubmissionAudits(store, { walletAddress: "0x1", chainId: "sepolia" }),
+    ).toBe(0);
+    expect(store.hasTxHash(hash)).toBe(true);
+  });
 });

@@ -153,6 +153,93 @@ function shortRationale(value?: string) {
   return `${cleaned.slice(0, 117)}…`;
 }
 
+function ModeIcon({ id }: { id: ModeId }) {
+  const common = {
+    className: styles.icon,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true as const,
+  };
+  if (id === "guardian") {
+    return (
+      <svg {...common}>
+        <path d="M12 3 5 6.5v5.2c0 4.2 2.8 7.4 7 8.8 4.2-1.4 7-4.6 7-8.8V6.5L12 3Z" />
+        <path d="M9.5 12.2 11.2 14l3.5-4" />
+      </svg>
+    );
+  }
+  if (id === "event") {
+    return (
+      <svg {...common}>
+        <path d="M13 3 5 14h6l-1 7 9-12h-6l1-6Z" />
+      </svg>
+    );
+  }
+  if (id === "x402") {
+    return (
+      <svg {...common}>
+        <rect x="3.5" y="6" width="17" height="12" rx="2" />
+        <path d="M3.5 10h17" />
+        <path d="M8 14h3.5" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common}>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M16.2 16.2 20 20" />
+    </svg>
+  );
+}
+
+function StepIcon({ id }: { id: CycleStep }) {
+  const common = {
+    className: styles.stepIcon,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true as const,
+  };
+  if (id === "observe") {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+      </svg>
+    );
+  }
+  if (id === "decide") {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 8v4l2.5 2.5" />
+      </svg>
+    );
+  }
+  if (id === "policy") {
+    return (
+      <svg {...common}>
+        <path d="M8 4h8l3 4v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V8l3-4Z" />
+        <path d="M9 12.5 11 14.5 15.5 10" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common}>
+      <path d="M5 12h10" />
+      <path d="M12 7l5 5-5 5" />
+      <path d="M19 7v10" />
+    </svg>
+  );
+}
+
 function HexLink({
   value,
   href,
@@ -398,6 +485,7 @@ export default function Home() {
                 className={`${styles.modeCard} ${mode === item.id ? styles.modeActive : ""}`}
                 onClick={() => setMode(item.id)}
               >
+                <ModeIcon id={item.id} />
                 <strong>{item.title}</strong>
                 <span>{item.blurb}</span>
               </button>
@@ -514,6 +602,7 @@ export default function Home() {
                   disabled={!lastResult && !busy}
                   onClick={() => setCycleStep(step.id)}
                 >
+                  <StepIcon id={step.id} />
                   <em>{index + 1}</em>
                   {step.label}
                 </button>
