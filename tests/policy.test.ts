@@ -61,6 +61,34 @@ describe("evaluatePolicy", () => {
     expect(result.reasons.join(" ")).toMatch(/cooldown/i);
   });
 
+  it("blocks negative amountWei without throwing", () => {
+    const cfg = config();
+    const action = cfg.allowedActions.find((a) => a.id === "transfer-topup")!;
+    const result = evaluatePolicy({
+      config: cfg,
+      decision: { actionId: action.id, rationale: "test", fromRules: true },
+      action,
+      amountWei: "-1",
+    });
+    expect(result.allowed).toBe(false);
+    expect(result.reasons.join(" ")).toMatch(/invalid amountWei/i);
+  });
+
+  it("blocks malformed amountWei without throwing", () => {
+    const cfg = config();
+    const action = cfg.allowedActions.find((a) => a.id === "transfer-topup")!;
+    for (const amountWei of ["abc", "1.5", "12e3"]) {
+      const result = evaluatePolicy({
+        config: cfg,
+        decision: { actionId: action.id, rationale: "test", fromRules: true },
+        action,
+        amountWei,
+      });
+      expect(result.allowed).toBe(false);
+      expect(result.reasons.join(" ")).toMatch(/invalid amountWei/i);
+    }
+  });
+
   it("allows noop when kill switch off", () => {
     const cfg = config();
     const action = cfg.allowedActions.find((a) => a.id === "noop")!;

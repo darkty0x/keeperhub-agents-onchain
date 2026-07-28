@@ -13,10 +13,16 @@ function normalizeAddr(a: string): string {
   return a.toLowerCase();
 }
 
+const NON_NEGATIVE_WEI = /^\d+$/;
+
 export function evaluatePolicy(input: PolicyInput): PolicyResult {
   const reasons: string[] = [];
   const { config, action, amountWei } = input;
   const now = input.now ?? new Date();
+
+  if (!NON_NEGATIVE_WEI.test(amountWei)) {
+    return { allowed: false, reasons: [`invalid amountWei: ${amountWei}`] };
+  }
 
   if (config.killSwitch) reasons.push("kill switch enabled");
   if (!config.chainAllowlist.includes(config.chainId)) {
